@@ -1,0 +1,65 @@
+{
+    "env": {
+        "libPath": "${workspaceFolder}/../lib",
+        "toolchainPath": "${workspaceFolder}/../toolchain",
+        "includes": [
+            "${toolchainPath}/arm-none-eabi/include",
+            "${toolchainPath}/arm-none-eabi/include/c++/7.2.1",
+            "${toolchainPath}/arm-none-eabi/include/c++/7.2.1/arm-none-eabi",
+            "${toolchainPath}/arm-none-eabi/include/c++/7.2.1/backward",
+            "${toolchainPath}/lib/gcc/arm-none-eabi/7.2.1/include",
+            "${toolchainPath}/lib/gcc/arm-none-eabi/7.2.1/include-fixed",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/common/ports/ARMCMx/devices/STM32F4xx",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/ext/CMSIS/include",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/ext/CMSIS/ST",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/rt/include",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/rt/ports/ARMCMx",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/rt/ports/ARMCMx/compilers/GCC",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/hal/osal/rt",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/hal/include",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/hal/ports/common/ARMCMx",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/hal/ports/STM32/STM32F4xx",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/hal/ports/STM32/LLD",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/hal/ports/STM32/LLD/DACv1",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/hal/ports/STM32/LLD/GPIOv2",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/hal/ports/STM32/LLD/I2Cv1",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/hal/ports/STM32/LLD/OTGv1",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/hal/ports/STM32/LLD/RTCv2",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/hal/ports/STM32/LLD/SPIv1",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/hal/ports/STM32/LLD/TIMv1",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/hal/ports/STM32/LLD/USARTv1",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/various",
+            "${libPath}/e-puck2_main-processor/ChibiOS/os/hal/lib/streams",
+            "${libPath}/e-puck2_main-processor/ChibiOS/test/rt",
+            "${libPath}/e-puck2_main-processor/ChibiOS_ext/os/hal/include",
+            "${libPath}/e-puck2_main-processor/ChibiOS_ext/os/hal/ports/STM32/STM32F4xx",
+            "${libPath}/e-puck2_main-processor/ChibiOS_ext/os/hal/boards/epuck2",
+            "${libPath}/e-puck2_main-processor/ChibiOS_ext/ext/fatfs/src",
+            "${libPath}/e-puck2_main-processor/src/epuck1x",
+            "${libPath}/e-puck2_main-processor/src/",
+            "${libPath}/e-puck2_main-processor/aseba",
+            "${libPath}/e-puck2_main-processor/src",
+            "${workspaceFolder}/micro-315-project/**"
+        ],
+        "defines": [
+            "ARM_MATH_CM4",
+            "__FPU_PRESENT"
+        ]
+    },
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${env:includes}"
+            ],
+            "defines": [
+                "${env:defines}"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-gcc-arm",
+            "compilerPath": "${toolchainPath}/bin/arm-none-eabi-gcc.exe"
+        }
+    ],
+    "version": 4
+}
