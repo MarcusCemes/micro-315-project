@@ -42,8 +42,13 @@
             "${workspaceFolder}/micro-315-project/**"
         ],
         "defines": [
+            "__FPU_PRESENT",
             "ARM_MATH_CM4",
-            "__FPU_PRESENT"
+            "CORTEX_USE_FPU=TRUE",
+            "STDIN_SD=SDU1",
+            "STDOUT_SD=SDU1",
+            "THUMB_PRESENT",
+            "THUMB_NO_INTERWORKING"
         ]
     },
     "configurations": [
@@ -58,7 +63,34 @@
             "cStandard": "c11",
             "cppStandard": "c++17",
             "intelliSenseMode": "windows-gcc-arm",
-            "compilerPath": "${toolchainPath}/bin/arm-none-eabi-gcc.exe"
+            "compilerPath": "${toolchainPath}/bin/arm-none-eabi-gcc.exe",
+            "compilerArgs": [
+                "-c",
+                "-mcpu=cortex-m4",
+                "-O2",
+                "-ggdb",
+                "-fomit-frame-pointer",
+                "-falign-functions=16",
+                "-fno-strict-aliasing",
+                "-fstack-protector-all",
+                "-L .",
+                "-ffunction-sections",
+                "-fdata-sections",
+                "-fno-common",
+                "-mfloat-abi=hard",
+                "-mfpu=fpv4-sp-d16",
+                "-fsingle-precision-constant",
+                "-Wall",
+                "-Wextra",
+                "-Wundef",
+                "-Wstrict-prototypes",
+                "-Wno-implicit-fallthrough",
+                "-Wa,-alms=build/lst/",
+                "-mno-thumb-interwork",
+                "-MD",
+                "-MP",
+                "-MF .dep/build.d"
+            ]
         }
     ],
     "version": 4
