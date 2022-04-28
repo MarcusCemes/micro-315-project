@@ -18,6 +18,7 @@
 #include <usbcfg.h>
 
 #include "main.h"
+#include "audio_processing.h"
 
 messagebus_t bus;
 MUTEX_DECL(bus_lock);
@@ -28,6 +29,8 @@ static void init(void);
 int main(void)
 {
     init();
+
+    chprintf((BaseSequentialStream *)&SD3, "Initialization started\n");
 
     while (1)
     {
@@ -57,18 +60,18 @@ static void init(void)
     messagebus_init(&bus, &bus_lock, &bus_condvar);
 
     // Reset to a known state
-    clear_leds();      // LEDS
-    set_body_led(0);   // LEDS
-    set_front_led(0);  // LEDS
-    usb_start();       // USB
-    dcmi_start();      // Camera
-    po8030_start();    // IC2, Camera
-    motors_init();     // Motors
-    proximity_start(); // Proximity sensors
-    dac_start();       // Speaker
-    spi_comm_start();  // Serial Peripheral Interface
-    serial_start();    // UART3
-    mic_start(NULL);   // Microphone
+    clear_leds();                     // LEDS
+    set_body_led(0);                  // LEDS
+    set_front_led(0);                 // LEDS
+    usb_start();                      // USB
+    dcmi_start();                     // Camera
+    po8030_start();                   // IC2, Camera
+    motors_init();                    // Motors
+    proximity_start();                // Proximity sensors
+    dac_start();                      // Speaker
+    spi_comm_start();                 // Serial Peripheral Interface
+    serial_start();                   // UART3
+    mic_start(&micDataReadyCallback); // Microphone
 }
 
 #define STACK_CHK_GUARD 0xe2dee396
