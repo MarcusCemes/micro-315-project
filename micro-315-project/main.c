@@ -17,6 +17,7 @@
 #include <spi_comm.h>
 #include <usbcfg.h>
 
+#include "lights.h"
 #include "main.h"
 
 messagebus_t bus;
@@ -28,6 +29,7 @@ static void init(void);
 int main(void)
 {
     init();
+    start_lights();
 
     while (1)
     {
