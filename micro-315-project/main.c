@@ -3,24 +3,26 @@
 #include <string.h>
 
 #include <arm_math.h>
+#include <ch.h>
+#include <hal.h>
+#include <memory_protection.h>
+
 #include <audio/audio_thread.h>
 #include <audio/microphone.h>
-#include <ch.h>
 #include <chprintf.h>
-#include <hal.h>
 #include <leds.h>
 #include <motors.h>
-#include <memory_protection.h>
 #include <sensors/mpu9250.h>
 #include <sensors/proximity.h>
 #include <sensors/VL53L0X/VL53L0X.h>
 #include <spi_comm.h>
 #include <usbcfg.h>
 
+#include "lights.h"
 #include "main.h"
 
 messagebus_t bus;
-MUTEX_DECL(bus_lock);
+MUTEX_DECL(bus_lock); // @suppress("Field cannot be resolved")
 CONDVAR_DECL(bus_condvar);
 
 static void init(void);
@@ -28,11 +30,8 @@ static void init(void);
 int main(void)
 {
     init();
-
-    while (1)
-    {
-        chThdSleepMilliseconds(60000); // Sufficiently long duration
-    }
+    trigger_lights(LIGHTS_WAITING, LIGHTS_LOOP);
+    chThdSleep(TIME_INFINITE);
 }
 
 static void serial_start(void)
@@ -69,6 +68,8 @@ static void init(void)
     spi_comm_start();  // Serial Peripheral Interface
     serial_start();    // UART3
     mic_start(NULL);   // Microphone
+
+    init_lights(); // Light animations
 }
 
 #define STACK_CHK_GUARD 0xe2dee396
