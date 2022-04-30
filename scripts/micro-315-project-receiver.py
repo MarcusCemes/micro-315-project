@@ -2,64 +2,125 @@ from sys import argv
 from threading import Thread
 from time import sleep
 
+from msgpack import unpackb
+from rich.console import Console
 from serial import Serial, SerialException
 
-# Global variable to signal the serial port
-# thread to return after the blocking call
-# has timed out
-stop = False
-
-READ_TIMEOUT = 2
 INDEFINITE_TIME = 3600
+SFD = b"\x7e"
+
+console = Console()
 
 
-def process_data(data: str):
-    print(data)
+class CancelledException(Exception):
+    pass
 
 
-def read_from_port(port: Serial):
-    global stop
+class CancellationToken:
+    def __init__(self):
+        self.is_cancelled = False
+
+    def cancel(self):
+        self.is_cancelled = True
+
+    def assert_ok(self):
+        if self.is_cancelled:
+            raise CancelledException()
+
+
+class ProtocolException(Exception):
+    pass
+
+
+def process_data(serialised_data: str):
+    data = unpackb(serialised_data)
+    console.log(data)
+
+
+def read_from_port(port: Serial, token: CancellationToken):
+    """
+    Read data messages from the e-puck2, adhering to a custom protocol.
+    The read call is blocking and problematic on Windows, requiring
+    frequent checks to the cancellation token.
+    """
 
     while True:
-        data = port.readline()
+        try:
+            # The initial data may contain random garbage, the first
+            # read has to be handled differently.
+            port.read_until(SFD)
+            token.assert_ok()
+            console.log("[bold green]Received initial SFD byte")
 
-        if stop == True:
-            port.close()
-            print("Serial port closed")
-            return
+            size = int.from_bytes(port.read(2), byteorder="big")
+            token.assert_ok()
 
-        if len(data) > 0:
+            data = port.read(size)
+            token.assert_ok()
+
             process_data(data)
+
+            # Continue to read and process subsequent data frames
+            while True:
+                sfd = port.read()
+                token.assert_ok()
+
+                if sfd != SFD:
+                    console.log(
+                        "[bold red]Protocol error, unexpected byte received")
+                    console.log("[bold red]Perhaps the device reset?")
+                    console.log("[cyan]Waiting for new SDF byte...")
+                    break
+
+                size = int.from_bytes(port.read(2), byteorder="big")
+                token.assert_ok()
+
+                data = port.read(size)
+                token.assert_ok()
+
+                process_data(data)
+
+        except CancelledException:
+            console.log("[cyan]Closing serial port...")
+            port.close()
+            return
 
 
 def main():
-    global stop
 
     if len(argv) < 2:
-        print(f"Usage: {argv[0]} <com_port>")
+        console.print(f"Usage: {argv[0]} <com_port>")
         return
 
-    print("\nConnecting to the e-puck...")
+    console.print("")
+    with console.status("Connecting to the e-puck...", spinner_style="cyan"):
+        try:
+            com_port = argv[1]
+            port = Serial(com_port)
+            console.log("[green]✅ Connected to the e-puck device")
+        except SerialException:
+            console.log("[red]‼️ Could not connect to the e-puck!")
+            console.log("🤚 Perhaps try a different COM port?\n")
+            return
 
-    try:
-        com_port = argv[1]
-        port = Serial(com_port, timeout=READ_TIMEOUT)
-        print(f"Connected on {port.name}!")
-    except SerialException:
-        print("Could not connect to the e-puck2 robot.")
-        print("Maybe try a different COM port?")
-        return
-
-    thread = Thread(target=read_from_port, args=(port,))
+    token = CancellationToken()
+    thread = Thread(target=read_from_port, args=(port, token))
     thread.start()
 
     try:
         while True:
-            # Sleep is able to receive KeyboardInterrupt on Windows
-            sleep(INDEFINITE_TIME)
+            sleep(INDEFINITE_TIME)  # Sleep can be interrupted on Windows
     except KeyboardInterrupt:
-        print("Closing the serial port...")
-        stop = True
+        console.log("[cyan]Interrupt detected!")
+        console.log("[cyan]Waiting for communication thread to terminate...")
+
+        token.cancel()
+        port.cancel_read()
+        port.cancel_write()
+
+    thread.join()
+    console.log("[cyan]Done\n")
 
 
-main()
+if __name__ == '__main__':
+    main()
