@@ -6,13 +6,17 @@
 #define ON 1
 #define OFF 0
 #define MAX_INTENSITY 255
-/** The animation that should be cycled. */
+
+/** The animation that should be looped. */
 static lights_animation_t _animation = LIGHTS_STOP;
 
-/** If flag is set, the animation will play once before returning. */
-static bool _mode = false;
+/** The animation mode. */
+static lights_mode_t _mode = LIGHTS_LOOP;
 
-/** The animation to only play once. */
+/**
+ * A temporary storage of the animation to play once, without overwriting
+ * the looped animation.
+ */
 static lights_animation_t _once_animation = LIGHTS_STOP;
 
 /**
@@ -29,7 +33,7 @@ static binary_semaphore_t _cancellation_bsem;
 static bool try_wait(uint32_t time_ms)
 {
 	msg_t msg = chBSemWaitTimeout(&_cancellation_bsem, MS2ST(time_ms));
-	return msg != MSG_TIMEOUT;
+	return msg == MSG_TIMEOUT;
 }
 
 /** Utility macro for calling try_wait() and returning if cancelled. */
@@ -126,7 +130,7 @@ static THD_FUNCTION(lights_thread, arg) // @suppress("No return")
 void init_lights()
 {
 	chBSemObjectInit(&_cancellation_bsem, false);
-	(void)chThdCreateStatic(lights_stack, sizeof(lights_stack), NORMALPRIO, lights_thread, NULL);
+	(void)chThdCreateStatic(lights_stack, sizeof(lights_stack), HIGHPRIO, lights_thread, NULL);
 }
 
 void trigger_lights(lights_animation_t animation, lights_mode_t mode)

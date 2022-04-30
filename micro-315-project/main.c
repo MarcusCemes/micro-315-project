@@ -30,7 +30,7 @@ static void init(void);
 int main(void)
 {
     init();
-    trigger_lights(LIGHTS_WAITING, false);
+    trigger_lights(LIGHTS_WAITING, LIGHTS_LOOP);
     chThdSleep(TIME_INFINITE);
 }
 
