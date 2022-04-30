@@ -18,6 +18,7 @@
 #include <spi_comm.h>
 #include <usbcfg.h>
 
+#include "comms.h"
 #include "lights.h"
 #include "main.h"
 
@@ -70,6 +71,7 @@ static void init(void)
     mic_start(NULL);   // Microphone
 
     init_lights(); // Light animations
+    init_comms();  // Communication
 }
 
 #define STACK_CHK_GUARD 0xe2dee396
