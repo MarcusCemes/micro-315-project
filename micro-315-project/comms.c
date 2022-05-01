@@ -7,6 +7,7 @@
 #include "vendor/mpack.h"
 
 #define COMMS_BUFFER_SIZE 256
+#define FORMAT_BUFFER_SIZE 256
 
 /** Ensures that one one thread can send an uninterrupted message. */
 static mutex_t _comms_lock;
@@ -55,7 +56,7 @@ static bool try_send(uint8_t byte)
  */
 static bool transmit_start(size_t size_hint)
 {
-    union payload_size_t size = {.integer = min(size_hint, MAX_SIZE)};
+    union payload_size_t size = { .integer = min(size_hint, MAX_SIZE) };
 
     return try_send(SFD) && try_send(size.bytes[2]) && try_send(size.bytes[1]) &&
            try_send(size.bytes[0]);
@@ -89,15 +90,15 @@ static size_t transmit_encoded(const char *data, size_t count)
     for (size_t sent = 0; sent < count; ++sent)
         switch (data[sent])
         {
-        case SFD:
-        case ETX:
-        case ESC:
-            if (!try_send(ESC) || !try_send(data[sent] ^ ESC_XOR))
-                return sent;
-            break;
-        default:
-            if (!try_send(data[sent]))
-                return sent;
+            case SFD:
+            case ETX:
+            case ESC:
+                if (!try_send(ESC) || !try_send(data[sent] ^ ESC_XOR))
+                    return sent;
+                break;
+            default:
+                if (!try_send(data[sent]))
+                    return sent;
         }
 
     return count;
@@ -133,6 +134,26 @@ bool comms_send_msg(char *type, char *data)
     transmit_end();
     chMtxUnlock(&_comms_lock);
     return delivered;
+}
+
+bool comms_send_msg_f(char *type, const char *fmt, ...)
+{
+    va_list args;
+    char *buffer;
+
+    // Some threads have a very limited stack size,
+    // the string should be formatted on the heap
+    buffer = (char *)malloc(FORMAT_BUFFER_SIZE);
+
+    // Format the string
+    va_start(args, fmt);
+    vsnprintf(buffer, FORMAT_BUFFER_SIZE, fmt, args);
+    va_end(args);
+
+    bool result = comms_send_msg(type, buffer);
+
+    free(buffer);
+    return result;
 }
 
 void init_comms(void)

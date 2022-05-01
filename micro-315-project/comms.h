@@ -10,10 +10,21 @@
  * The message will be serialized as a [type, data] array.
  * Both type and data must be null-terminated strings.
  *
+ * @returns true if the transmission was successful
+ *
  * ## Examples
  * bool all_sent = comms_send_msg("STATUS", "Ok");
  */
 bool comms_send_msg(char *type, char *data);
+
+/**
+ * Similar to comms_send_msg(), but formats the string on
+ * the heap first.
+ *
+ * @returns true if the transmission was successful
+ */
+bool comms_send_msg_f(char *type, const char* fmt, ...);
+
 
 /** Initialises the communications mutex. */
 void init_comms(void);
