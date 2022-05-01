@@ -3,15 +3,15 @@
 
 typedef enum
 {
-	LIGHTS_ONCE,
-	LIGHTS_LOOP,
+    LIGHTS_ONCE,
+    LIGHTS_LOOP,
 } lights_mode_t;
 
 typedef enum
 {
-	LIGHTS_STOP,
-	LIGHTS_WAITING,
-	LIGHTS_SPIN,
+    LIGHTS_STOP,
+    LIGHTS_WAITING,
+    LIGHTS_SPIN,
 } lights_animation_t;
 
 /** Initialize the lights thread. */
