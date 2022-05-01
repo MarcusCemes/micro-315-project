@@ -55,7 +55,7 @@ static bool try_send(uint8_t byte)
  */
 static bool transmit_start(size_t size_hint)
 {
-    union payload_size_t size = { .integer = min(size_hint, MAX_SIZE) };
+    union payload_size_t size = {.integer = min(size_hint, MAX_SIZE)};
 
     return try_send(SFD) && try_send(size.bytes[2]) && try_send(size.bytes[1]) &&
            try_send(size.bytes[0]);
@@ -89,15 +89,15 @@ static size_t transmit_encoded(const char *data, size_t count)
     for (size_t sent = 0; sent < count; ++sent)
         switch (data[sent])
         {
-            case SFD:
-            case ETX:
-            case ESC:
-                if (!try_send(ESC) || !try_send(data[sent] ^ ESC_XOR))
-                    return sent;
-                break;
-            default:
-                if (!try_send(data[sent]))
-                    return sent;
+        case SFD:
+        case ETX:
+        case ESC:
+            if (!try_send(ESC) || !try_send(data[sent] ^ ESC_XOR))
+                return sent;
+            break;
+        default:
+            if (!try_send(data[sent]))
+                return sent;
         }
 
     return count;
