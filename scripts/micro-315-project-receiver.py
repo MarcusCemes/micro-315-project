@@ -7,7 +7,10 @@ from rich.console import Console
 from serial import Serial, SerialException
 
 INDEFINITE_TIME = 3600
-SFD = b"\x7e"
+SFD = b'\x7e'  # ~
+ETX = b'\x03'  # ETX
+ESC = b'\x7d'  # }
+XOR = b'\x20'  # SPACE
 
 console = Console()
 
@@ -32,9 +35,29 @@ class ProtocolException(Exception):
     pass
 
 
-def process_data(serialised_data: str):
-    data = unpackb(serialised_data)
+def decode_data(data: bytes) -> bytes:
+    decoded_data = bytearray()
+    i = 0
+    while i < len(data):
+        if data[i] == ESC[0]:
+            decoded_data.append(data[i + 1] ^ XOR[0])
+            i += 2
+        else:
+            decoded_data.append(data[i])
+            i += 1
+    return bytes(decoded_data)
+
+
+def process_data(encoded_data: str):
+    data = unpackb(decode_data(encoded_data))
     console.log(data)
+
+
+# def warn_protocol_error(byte: bytes) -> None:
+#     console.log(
+#         f"[bold red]Protocol error, unexpected byte received: {byte}")
+#     console.log("[bold red]Perhaps the device reset?")
+#     console.log("[cyan]Waiting for new SDF byte...")
 
 
 def read_from_port(port: Serial, token: CancellationToken):
@@ -46,39 +69,24 @@ def read_from_port(port: Serial, token: CancellationToken):
 
     while True:
         try:
-            # The initial data may contain random garbage, the first
-            # read has to be handled differently.
             port.read_until(SFD)
             token.assert_ok()
-            console.log("[bold green]Received initial SFD byte")
+            console.log("[cyan]TRANSMISSION START")
 
-            size = int.from_bytes(port.read(2), byteorder="big")
+            data = bytearray()
+            size_bytes = port.read(3)
+            size = int.from_bytes(size_bytes, byteorder="big")
             token.assert_ok()
 
-            data = port.read(size)
+            console.log(f"[cyan]SIZE HINT {size}")
+            data.extend(port.read(size))
             token.assert_ok()
 
+            data.extend(port.read_until(ETX)[:-1])
+            token.assert_ok()
+
+            console.log("[cyan]TRANSMISSION END")
             process_data(data)
-
-            # Continue to read and process subsequent data frames
-            while True:
-                sfd = port.read()
-                token.assert_ok()
-
-                if sfd != SFD:
-                    console.log(
-                        "[bold red]Protocol error, unexpected byte received")
-                    console.log("[bold red]Perhaps the device reset?")
-                    console.log("[cyan]Waiting for new SDF byte...")
-                    break
-
-                size = int.from_bytes(port.read(2), byteorder="big")
-                token.assert_ok()
-
-                data = port.read(size)
-                token.assert_ok()
-
-                process_data(data)
 
         except CancelledException:
             console.log("[cyan]Closing serial port...")
