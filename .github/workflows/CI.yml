@@ -1,0 +1,55 @@
+name: Compile
+
+on: [push]
+
+jobs:
+  compile:
+    name: Compile
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          path: micro-315-project
+
+      - name: Download ChibiOS
+        uses: actions/checkout@v3
+        with:
+          repository: ChibiOS/ChibiOS
+          ref: ver3.0.5
+          path: lib/ChibiOS
+
+      - name: Download e-puck2_main-processor
+        uses: actions/checkout@v3
+        with:
+          repository: e-puck2/e-puck2_main-processor
+          path: lib/e-puck2_main-processor
+          submodules: true
+
+      - name: Download msgbus
+        uses: actions/checkout@v3
+        with:
+          repository: cvra/msgbus
+          path: lib/msgbus
+
+      # Compilation fails on more recent toolchains
+      - name: Setup arm-none-eabi-gcc
+        uses: fiam/arm-none-eabi-gcc@v1
+        with:
+          release: 9-2019-q4
+          directory: toolchain
+
+      # fiam/arm-none-eabi-gcc does not add the bin folder to $PATH
+      - name: Add arm-none-eabi-gcc to path
+        run: echo "${GITHUB_WORKSPACE}/toolchain/bin" >> $GITHUB_PATH
+
+      - name: Compile
+        working-directory: micro-315-project/micro-315-project
+        run: make
+
+      - name: Upload build artefact
+        uses: actions/upload-artifact@v3
+        with:
+          name: micro-315-project.elf
+          path: micro-315-project/micro-315-project/build/micro-315-project.elf
