@@ -11,6 +11,7 @@ typedef enum
 {
     LIGHTS_STOP,
     LIGHTS_WAITING,
+    LIGHTS_ATTENTION,
     LIGHTS_SPIN,
 } lights_animation_t;
 

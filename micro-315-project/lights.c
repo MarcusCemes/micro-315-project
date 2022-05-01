@@ -41,6 +41,26 @@ static bool try_wait(uint32_t time_ms)
     if (!try_wait(MS))                                                                             \
         return false;
 
+/** Blinks all LEDs red once. */
+static bool blink_red(uint32_t delay_ms)
+{
+    for (uint8_t i = 0; i < NUM_LED; ++i)
+    {
+        set_led(i, ON);
+        set_rgb_led(i, MAX_INTENSITY, OFF, OFF);
+    }
+    TRY_WAIT(delay_ms);
+
+    for (uint8_t i = 0; i < NUM_LED; ++i)
+    {
+        set_led(i, OFF);
+        set_rgb_led(i, OFF, OFF, OFF);
+    }
+    TRY_WAIT(delay_ms);
+
+    return true;
+}
+
 /** Does nothing. */
 static bool animation_stop(void)
 {
@@ -50,20 +70,16 @@ static bool animation_stop(void)
 /** Blinks all LEDs red. */
 static bool animation_waiting(void)
 {
-    for (uint8_t i = 0; i < NUM_LED; ++i)
-    {
-        set_led(i, ON);
-        set_rgb_led(i, MAX_INTENSITY, OFF, OFF);
-    }
-    TRY_WAIT(1000);
+    return blink_red(1000);
+}
 
-    for (uint8_t i = 0; i < NUM_LED; ++i)
-    {
-        set_led(i, OFF);
-        set_rgb_led(i, OFF, OFF, OFF);
-    }
-    TRY_WAIT(1000);
+static bool animation_attention(void)
+{
+    for (uint8_t j = 0; j < 5; ++j)
+        if (!blink_red(100))
+            return false;
 
+    TRY_WAIT(500);
     return true;
 }
 
@@ -93,6 +109,9 @@ static bool play_animation(lights_animation_t animation)
 
         case LIGHTS_WAITING:
             return animation_waiting();
+
+        case LIGHTS_ATTENTION:
+            return animation_attention();
 
         case LIGHTS_SPIN:
             return animation_spin();
