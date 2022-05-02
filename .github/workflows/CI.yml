@@ -13,7 +13,17 @@ jobs:
         with:
           path: micro-315-project
 
+      - name: Cache build dependencies
+        id: cache
+        uses: actions/cache@v3
+        with:
+          key: build-dependencies
+          path: |
+            lib
+            toolchain
+
       - name: Download ChibiOS
+        if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v3
         with:
           repository: ChibiOS/ChibiOS
@@ -21,6 +31,7 @@ jobs:
           path: lib/ChibiOS
 
       - name: Download e-puck2_main-processor
+        if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v3
         with:
           repository: e-puck2/e-puck2_main-processor
@@ -28,6 +39,7 @@ jobs:
           submodules: true
 
       - name: Download msgbus
+        if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v3
         with:
           repository: cvra/msgbus
@@ -35,6 +47,7 @@ jobs:
 
       # Compilation fails on more recent toolchains
       - name: Setup arm-none-eabi-gcc
+        if: steps.cache.outputs.cache-hit != 'true'
         uses: fiam/arm-none-eabi-gcc@v1
         with:
           release: 9-2019-q4
