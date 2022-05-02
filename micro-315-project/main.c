@@ -18,6 +18,7 @@
 #include <string.h>
 #include <usbcfg.h>
 
+#include "audio.h"
 #include "comms.h"
 #include "lights.h"
 #include "sensors.h"
@@ -69,11 +70,11 @@ static void init(void)
     dac_start();        // Speaker
     spi_comm_start();   // Serial Peripheral Interface
     serial_start();     // UART3
-    mic_start(NULL);    // Microphone
 
     init_lights();   // Light animations
-    init_comms();    // Communication
     init_sensors();  // Sensors
+    init_comms();    // Communication
+    init_audio();    // Audio processing
 }
 
 #define STACK_CHK_GUARD 0xe2dee396

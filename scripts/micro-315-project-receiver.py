@@ -1,10 +1,13 @@
-from sys import argv
+from matplotlib import animation
+import matplotlib.pyplot as plt
+from msgpack import unpackb, UnpackValueError
+import numpy as np
+from rich.console import Console
+from serial import Serial, SerialException
+from sys import argv, stdout
 from threading import Thread
 from time import sleep
 
-from msgpack import unpackb
-from rich.console import Console
-from serial import Serial, SerialException
 
 INDEFINITE_TIME = 3600
 SFD = b'\x7e'  # ~
@@ -13,6 +16,14 @@ ESC = b'\x7d'  # }
 XOR = b'\x20'  # SPACE
 
 console = Console()
+
+fig, axx = plt.subplots(5)
+plot_needs_update = False
+plot_pcm = None
+plot_fft_re = None
+plot_fft_im = None
+plot_mag_pha_re = None
+plot_mag_pha_im = None
 
 
 class CancelledException(Exception):
@@ -49,8 +60,32 @@ def decode_data(data: bytes) -> bytes:
 
 
 def process_data(encoded_data: str):
-    data = unpackb(decode_data(encoded_data))
-    console.log(data)
+    try:
+        decoded_data = decode_data(encoded_data)
+        data = unpackb(decoded_data)
+    except UnpackValueError as error:
+        console.log("[red]Could not unpack data")
+        console.log(f"[red]{error}")
+        console.log(decoded_data)
+        return
+
+    global plot_needs_update, plot_pcm, plot_fft_re, plot_fft_im, plot_mag_pha_re, plot_mag_pha_im
+
+    if data[0] == "PCM":
+        plot_pcm = np.frombuffer(data[1], dtype=np.float32)[::2]
+        plot_needs_update = True
+    elif data[0] == "FFT":
+        re_im = np.frombuffer(data[1], dtype=np.float32)
+        plot_fft_re = re_im[::2]
+        plot_fft_im = re_im[1::2]
+        plot_needs_update = True
+    elif data[0] == "MAG/PHA":
+        re_im = np.frombuffer(data[1], dtype=np.float32)
+        plot_mag_pha_re = re_im[::2]
+        plot_mag_pha_im = re_im[1::2]
+        plot_needs_update = True
+    else:
+        console.log(data)
 
 
 # def warn_protocol_error(byte: bytes) -> None:
@@ -67,8 +102,20 @@ def read_from_port(port: Serial, token: CancellationToken):
     frequent checks to the cancellation token.
     """
 
+    read_raw = "--raw" in argv
+    if read_raw:
+        console.log("[yellow]--raw is set, reading bytes only")
+
     while True:
         try:
+            if read_raw:
+                byte = port.read()
+                token.assert_ok()
+                if byte:
+                    console.log(f"{hex(byte[0]).ljust(5)} {byte}")
+                    stdout.flush()
+                continue
+
             port.read_until(SFD)
             token.assert_ok()
             console.log("[cyan]TRANSMISSION START")
@@ -79,9 +126,11 @@ def read_from_port(port: Serial, token: CancellationToken):
             token.assert_ok()
 
             console.log(f"[cyan]SIZE HINT {size}")
+            console.log("Reading up to size...")
             data.extend(port.read(size))
             token.assert_ok()
 
+            console.log("Reading until EXT...")
             data.extend(port.read_until(ETX)[:-1])
             token.assert_ok()
 
@@ -92,6 +141,42 @@ def read_from_port(port: Serial, token: CancellationToken):
             console.log("[cyan]Closing serial port...")
             port.close()
             return
+
+
+# update the plots
+def update_plot(_args):
+    global plot_needs_update
+
+    if not plot_needs_update:
+        return
+
+    plot_needs_update = False
+
+    if plot_pcm is not None:
+        axx[0].clear()
+        axx[0].title.set_text("PCM data")
+
+        axx[0].plot(np.linspace(0, 1, len(plot_pcm)), plot_pcm)
+
+    if plot_fft_re is not None:
+        axx[1].clear()
+        axx[1].title.set_text("FFT real/imaginary")
+        axx[1].plot(np.linspace(0, 1, len(plot_fft_re)), plot_fft_re)
+
+    if plot_fft_im is not None:
+        axx[2].clear()
+        axx[2].plot(np.linspace(0, 1, len(plot_fft_im)), plot_fft_im)
+
+    if plot_mag_pha_re is not None:
+        axx[3].clear()
+        axx[3].title.set_text("Magnitude/Phase")
+        axx[3].plot(np.linspace(
+            0, 1, len(plot_mag_pha_re)), plot_mag_pha_re)
+
+    if plot_mag_pha_im is not None:
+        axx[4].clear()
+        axx[4].plot(np.linspace(
+            0, 1, len(plot_mag_pha_im)), plot_mag_pha_im)
 
 
 def main():
@@ -117,6 +202,8 @@ def main():
 
     try:
         while True:
+            _anim = animation.FuncAnimation(fig, update_plot, interval=200)
+            plt.show()
             sleep(INDEFINITE_TIME)  # Sleep can be interrupted on Windows
     except KeyboardInterrupt:
         console.log("[cyan]Interrupt detected!")
