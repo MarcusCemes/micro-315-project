@@ -32,8 +32,8 @@ static void init(void);
 int main(void)
 {
     init();
-    comms_send_msg("EVENT", "INIT");
     trigger_lights(LIGHTS_WAITING, LIGHTS_LOOP);
+    comms_send_msg("EVENT", "READY");
     chThdSleep(TIME_INFINITE);
 }
 
@@ -71,10 +71,12 @@ static void init(void)
     spi_comm_start();   // Serial Peripheral Interface
     serial_start();     // UART3
 
+    audio_init();    // Audio
+    init_comms();    // Communication
     init_lights();   // Light animations
     init_sensors();  // Sensors
-    init_comms();    // Communication
-    init_audio();    // Audio processing
+
+    audio_start();  // Audio processing
 }
 
 #define STACK_CHK_GUARD 0xe2dee396
