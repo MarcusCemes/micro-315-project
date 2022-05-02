@@ -91,7 +91,7 @@ static void process_audio_fft(void)
 /** Calculate the phase difference between left-right, using the front peak. */
 static void process_lr_phase(void)
 {
-    size_t peak_index = find_peak_32(_magnitudes[FRONT], BUFFER_SIZE);
+    size_t peak_index = find_peak_f32(_magnitudes[FRONT], BUFFER_SIZE);
     float phase_l = carg(_acquisition[LEFT][peak_index]);
     float phase_r = carg(_acquisition[RIGHT][peak_index]);
     float phase_delta = phase_r - phase_l;
@@ -165,7 +165,7 @@ static THD_FUNCTION(processing_thread, arg)  // @suppress("No return")
     }
 }
 
-void init_audio(void)
+void audio_init(void)
 {
     chMtxObjectInit(&_acquisition_lock);
     chBSemObjectInit(&_data_acquired_signal, true);
