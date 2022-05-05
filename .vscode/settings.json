@@ -1,3 +1,6 @@
 {
-    "makefile.makeDirectory": "micro-315-project"
+  "makefile.makeDirectory": "micro-315-project",
+  "files.associations": {
+    "*.h": "c"
+  }
 }

@@ -18,6 +18,7 @@
 #include <string.h>
 #include <usbcfg.h>
 
+#include "audio.h"
 #include "comms.h"
 #include "lights.h"
 #include "sensors.h"
@@ -28,13 +29,40 @@ CONDVAR_DECL(bus_condvar);
 
 static void init(void);
 
+/** Send audio back every 500ms to the remote device for visualisation. */
+void send_audio(void)
+{
+    audio_register();
+
+    while (true)
+    {
+        audio_wait();
+
+        audio_data_t* data = audio_data_borrow();
+        comms_send_buffer("PCM", (uint8_t*)data->pcm[FRONT], AUDIO_BUFFER_SIZE);
+        comms_send_buffer("FFT", (uint8_t*)data->fft[FRONT], AUDIO_BUFFER_SIZE);
+        comms_send_buffer("MAG", (uint8_t*)data->magnitudes[FRONT], AUDIO_BUFFER_SIZE);
+
+        audio_data_return();
+
+        chThdSleepMilliseconds(500);
+    }
+
+    audio_unregister();
+}
+
+/* == Entry point == */
+
 int main(void)
 {
     init();
-    comms_send_msg("EVENT", "INIT");
     trigger_lights(LIGHTS_WAITING, LIGHTS_LOOP);
+    comms_send_msg("EVENT", "READY");
+    send_audio();
     chThdSleep(TIME_INFINITE);
 }
+
+/* == Initialisation == */
 
 static void serial_start(void)
 {
@@ -69,12 +97,16 @@ static void init(void)
     dac_start();        // Speaker
     spi_comm_start();   // Serial Peripheral Interface
     serial_start();     // UART3
-    mic_start(NULL);    // Microphone
 
-    init_lights();   // Light animations
+    audio_init();    // Audio
     init_comms();    // Communication
+    lights_init();   // Lights
     init_sensors();  // Sensors
+
+    lights_start();  // Lights thread
 }
+
+/* == Stack guard == */
 
 #define STACK_CHK_GUARD 0xe2dee396
 uintptr_t __stack_chk_guard = STACK_CHK_GUARD;

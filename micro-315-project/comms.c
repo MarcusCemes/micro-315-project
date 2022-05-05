@@ -2,6 +2,7 @@
 
 #include <ch.h>
 #include <hal.h>
+#include <stdarg.h>
 
 #include "utils.h"
 #include "vendor/mpack.h"
@@ -13,6 +14,9 @@
 static mutex_t _comms_lock;
 /** A statically allocated buffer of reasonable size for serialization. */
 static uint8_t _comms_buffer[COMMS_BUFFER_SIZE];
+
+/** Debug assertion. */
+static bool initialised = false;
 
 /** Start Frame Delimiter character. */
 #define SFD 0x7E
@@ -112,8 +116,34 @@ static void comms_writer_flush(mpack_writer_t *writer, const char *buffer, size_
         mpack_writer_flag_error(writer, mpack_error_io);
 }
 
+bool comms_send_buffer(char *type, uint8_t *data, size_t count)
+{
+    chDbgCheck(initialised);
+    chMtxLock(&_comms_lock);
+    bool started = transmit_start(strlen((char *)type) + count);
+
+    mpack_writer_t writer;
+    mpack_writer_init(&writer, (char *)&_comms_buffer, COMMS_BUFFER_SIZE);
+    mpack_writer_set_flush(&writer, comms_writer_flush);
+
+    if (started)
+    {
+        mpack_start_array(&writer, 2);
+        mpack_write_cstr(&writer, type);
+        mpack_write_bin(&writer, (char *)data, count);
+        mpack_finish_array(&writer);
+    }
+
+    bool delivered = mpack_writer_destroy(&writer) == mpack_ok;
+
+    transmit_end();
+    chMtxUnlock(&_comms_lock);
+    return delivered;
+}
+
 bool comms_send_msg(char *type, char *data)
 {
+    chDbgCheck(initialised);
     chMtxLock(&_comms_lock);
     bool started = transmit_start(strlen(type) + strlen(data));
 
@@ -139,11 +169,10 @@ bool comms_send_msg(char *type, char *data)
 bool comms_send_msg_f(char *type, const char *fmt, ...)
 {
     va_list args;
-    char *buffer;
 
     // Some threads have a very limited stack size,
     // the string should be formatted on the heap
-    buffer = (char *)malloc(FORMAT_BUFFER_SIZE);
+    char *buffer = (char *)malloc(FORMAT_BUFFER_SIZE);
 
     // Format the string
     va_start(args, fmt);
@@ -159,4 +188,5 @@ bool comms_send_msg_f(char *type, const char *fmt, ...)
 void init_comms(void)
 {
     chMtxObjectInit(&_comms_lock);
+    initialised = true;
 }

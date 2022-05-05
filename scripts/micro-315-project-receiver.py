@@ -1,18 +1,31 @@
-from sys import argv
+from matplotlib import animation
+import matplotlib.pyplot as plt
+from msgpack import unpackb, UnpackValueError
+import numpy as np
+from rich.console import Console
+from serial import Serial, SerialException
+from sys import argv, stdout
 from threading import Thread
 from time import sleep
 
-from msgpack import unpackb
-from rich.console import Console
-from serial import Serial, SerialException
 
 INDEFINITE_TIME = 3600
+
+# Constant character values used in the protocol
 SFD = b'\x7e'  # ~
 ETX = b'\x03'  # ETX
 ESC = b'\x7d'  # }
 XOR = b'\x20'  # SPACE
 
 console = Console()
+
+# Global variables that hold plot data
+fig, axx = plt.subplots(4)
+plot_needs_update = False
+plot_pcm = None
+plot_fft_re = None
+plot_fft_im = None
+plot_mag = None
 
 
 class CancelledException(Exception):
@@ -31,10 +44,6 @@ class CancellationToken:
             raise CancelledException()
 
 
-class ProtocolException(Exception):
-    pass
-
-
 def decode_data(data: bytes) -> bytes:
     decoded_data = bytearray()
     i = 0
@@ -49,15 +58,38 @@ def decode_data(data: bytes) -> bytes:
 
 
 def process_data(encoded_data: str):
-    data = unpackb(decode_data(encoded_data))
-    console.log(data)
+    try:
+        decoded_data = decode_data(encoded_data)
+        data = unpackb(decoded_data)
 
+    except UnpackValueError as error:
+        console.log("[red]Could not unpack data!")
+        console.log("[yellow]The e-puck2 device may need to be restarted")
+        console.log(f"[yellow]{error}")
+        console.log(decoded_data)
+        return
 
-# def warn_protocol_error(byte: bytes) -> None:
-#     console.log(
-#         f"[bold red]Protocol error, unexpected byte received: {byte}")
-#     console.log("[bold red]Perhaps the device reset?")
-#     console.log("[cyan]Waiting for new SDF byte...")
+    global plot_needs_update, plot_pcm, plot_fft_re, plot_fft_im, plot_mag
+
+    if data[0] == "PCM":
+        plot_pcm = np.frombuffer(data[1], dtype=np.float32)
+        console.log(f"Received {len(plot_pcm)} PCM samples")
+        plot_needs_update = True
+
+    elif data[0] == "FFT":
+        re_im = np.frombuffer(data[1], dtype=np.float32)
+        plot_fft_re = re_im[::2]
+        plot_fft_im = re_im[1::2]
+        plot_needs_update = True
+        console.log(f"Received {len(plot_fft_re)} FFT samples")
+
+    elif data[0] == "MAG":
+        plot_mag = np.frombuffer(data[1], dtype=np.float32)
+        console.log(f"Received {len(plot_mag)} MAG samples")
+        plot_needs_update = True
+
+    else:
+        console.log(data)
 
 
 def read_from_port(port: Serial, token: CancellationToken):
@@ -67,25 +99,37 @@ def read_from_port(port: Serial, token: CancellationToken):
     frequent checks to the cancellation token.
     """
 
+    read_raw = "--raw" in argv
+    if read_raw:
+        console.log("[yellow]--raw is set, reading bytes only")
+
     while True:
         try:
+            if read_raw:
+                byte = port.read()
+                token.assert_ok()
+                if byte:
+                    console.log(f"{hex(byte[0]).ljust(5)} {byte}")
+                    stdout.flush()
+                continue
+
             port.read_until(SFD)
             token.assert_ok()
-            console.log("[cyan]TRANSMISSION START")
+            console.log("[cyan]Start of transmission")
 
             data = bytearray()
             size_bytes = port.read(3)
             size = int.from_bytes(size_bytes, byteorder="big")
             token.assert_ok()
 
-            console.log(f"[cyan]SIZE HINT {size}")
+            console.log(f"[cyan]Size hint: {size}")
             data.extend(port.read(size))
             token.assert_ok()
 
             data.extend(port.read_until(ETX)[:-1])
             token.assert_ok()
 
-            console.log("[cyan]TRANSMISSION END")
+            console.log("[cyan]End of transmission")
             process_data(data)
 
         except CancelledException:
@@ -94,12 +138,47 @@ def read_from_port(port: Serial, token: CancellationToken):
             return
 
 
+def update_plot(_args):
+    """
+    Re-render the plots if new data has been received.
+    """
+
+    global plot_needs_update
+
+    if not plot_needs_update:
+        return
+
+    plot_needs_update = False
+
+    if plot_pcm is not None:
+        axx[0].clear()
+        axx[0].title.set_text("PCM data")
+        axx[0].plot(np.linspace(0, 1, len(plot_pcm)), plot_pcm)
+
+    if plot_fft_re is not None:
+        axx[1].clear()
+        axx[1].title.set_text("FFT real")
+        axx[1].plot(np.linspace(0, 1, len(plot_fft_re)), plot_fft_re)
+
+    if plot_fft_im is not None:
+        axx[2].clear()
+        axx[2].title.set_text("FFT imaginary")
+        axx[2].plot(np.linspace(0, 1, len(plot_fft_im)), plot_fft_im)
+
+    if plot_mag is not None:
+        axx[3].clear()
+        axx[3].title.set_text("Magnitude")
+        axx[3].plot(np.linspace(
+            0, 1, len(plot_mag)), plot_mag)
+
+
 def main():
 
     if len(argv) < 2:
         console.print(f"Usage: {argv[0]} <com_port>")
         return
 
+    # Try to connect to the e-puck2 device
     console.print("")
     with console.status("Connecting to the e-puck...", spinner_style="cyan"):
         try:
@@ -111,11 +190,17 @@ def main():
             console.log("🤚 Perhaps try a different COM port?\n")
             return
 
+    # Start a background thread to receive data
     token = CancellationToken()
     thread = Thread(target=read_from_port, args=(port, token))
     thread.start()
 
+    # Run the matplotlib event loop and update with new data if necessary
     try:
+        if not "--raw" in argv:
+            # Update the graph in real-time
+            _anim = animation.FuncAnimation(fig, update_plot, interval=200)
+            plt.show()
         while True:
             sleep(INDEFINITE_TIME)  # Sleep can be interrupted on Windows
     except KeyboardInterrupt:
