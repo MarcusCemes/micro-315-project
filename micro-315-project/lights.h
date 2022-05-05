@@ -15,8 +15,11 @@ typedef enum
     LIGHTS_SPIN,
 } lights_animation_t;
 
-/** Initialize the lights thread. */
-void init_lights(void);
+/** Initialize resources need by the lights thread. */
+void lights_init(void);
+
+/** Start the lights thread. */
+void lights_start(void);
 
 /**
  * Interrupt the lights thread and start playing the given animation.

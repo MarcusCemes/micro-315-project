@@ -72,7 +72,7 @@ def process_data(encoded_data: str):
     global plot_needs_update, plot_pcm, plot_fft_re, plot_fft_im, plot_mag
 
     if data[0] == "PCM":
-        plot_pcm = np.frombuffer(data[1], dtype=np.float32)[::2]
+        plot_pcm = np.frombuffer(data[1], dtype=np.float32)
         console.log(f"Received {len(plot_pcm)} PCM samples")
         plot_needs_update = True
 
@@ -156,7 +156,6 @@ def update_plot(_args):
         axx[0].plot(np.linspace(0, 1, len(plot_pcm)), plot_pcm)
 
     if plot_fft_re is not None:
-        console.log("length", len(plot_fft_re))
         axx[1].clear()
         axx[1].title.set_text("FFT real")
         axx[1].plot(np.linspace(0, 1, len(plot_fft_re)), plot_fft_re)
@@ -198,10 +197,11 @@ def main():
 
     # Run the matplotlib event loop and update with new data if necessary
     try:
-        while True:
+        if not "--raw" in argv:
             # Update the graph in real-time
             _anim = animation.FuncAnimation(fig, update_plot, interval=200)
             plt.show()
+        while True:
             sleep(INDEFINITE_TIME)  # Sleep can be interrupted on Windows
     except KeyboardInterrupt:
         console.log("[cyan]Interrupt detected!")

@@ -1,20 +1,11 @@
 #include "utils.h"
 
-#include <ch.h>
-
 inline size_t min(size_t a, size_t b)
 {
     return a <= b ? a : b;
 }
 
 /* == Readers-Writer lock implementation == */
-
-struct rw_lock_t
-{
-    mutex_t mtx;
-    condition_variable_t cond;
-    int32_t readers;
-};
 
 void rw_init(rw_lock_t* lock)
 {

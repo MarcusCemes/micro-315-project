@@ -14,7 +14,7 @@
  *
  * @returns true if the transmission was successful
  */
-bool comms_send_buffer(uint8_t *type, uint8_t *data, size_t count);
+bool comms_send_buffer(char *type, uint8_t *data, size_t count);
 
 /**
  * Send a MessagePack-serialised message to the remote

@@ -116,7 +116,7 @@ static void comms_writer_flush(mpack_writer_t *writer, const char *buffer, size_
         mpack_writer_flag_error(writer, mpack_error_io);
 }
 
-bool comms_send_buffer(uint8_t *type, uint8_t *data, size_t count)
+bool comms_send_buffer(char *type, uint8_t *data, size_t count)
 {
     chDbgCheck(initialised);
     chMtxLock(&_comms_lock);
@@ -129,7 +129,7 @@ bool comms_send_buffer(uint8_t *type, uint8_t *data, size_t count)
     if (started)
     {
         mpack_start_array(&writer, 2);
-        mpack_write_cstr(&writer, (char *)type);
+        mpack_write_cstr(&writer, type);
         mpack_write_bin(&writer, (char *)data, count);
         mpack_finish_array(&writer);
     }

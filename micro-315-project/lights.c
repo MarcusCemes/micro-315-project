@@ -146,10 +146,14 @@ static THD_FUNCTION(lights_thread, arg)  // @suppress("No return")
     clear_leds();
 }
 
-void init_lights()
+void lights_init()
 {
     chBSemObjectInit(&_cancellation_bsem, false);
-    (void)chThdCreateStatic(lights_stack, sizeof(lights_stack), HIGHPRIO, lights_thread, NULL);
+}
+
+void lights_start(void)
+{
+    chThdCreateStatic(lights_stack, sizeof(lights_stack), HIGHPRIO, lights_thread, NULL);
 }
 
 void trigger_lights(lights_animation_t animation, lights_mode_t mode)
