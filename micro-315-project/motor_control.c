@@ -12,11 +12,7 @@
 #define WHEEL_RADIUS		0.02 // [m]
 #define NSTEP_ONE_TURN		1000 // number of step for 1 turn of the motor
 #define WHEEL_PERIMETER		13 // [cm]
-<<<<<<< HEAD
-#define TIME_ONE_TURN_200 	7.12 // [sec]
-=======
 #define TIME_ONE_TURN_AT_200 	7.15 // [sec]
->>>>>>> 620e63720f2b7e79859ec44eaa38c844f2c2083e
 
 #define MOTOR_RIGHT_A	GPIOE, 13
 #define MOTOR_RIGHT_B	GPIOE, 12
