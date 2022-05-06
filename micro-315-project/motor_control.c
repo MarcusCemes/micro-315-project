@@ -7,13 +7,13 @@
 #define MOTOR_SPEED_LIMIT   13 // [cm/s]
 #define NSTEP_ONE_EL_TURN   4  // number of steps to do 1 electrical turn
 #define NB_OF_PHASES        4  // number of phases of the motors
-#define ROTATION_SPEED 		50 // [step/s]
+#define ROTATION_SPEED 		200 // [step/s]
 #define TRANSLATION_SPEED	200 // [step/s]
 #define ROTATION_RADIUS		0.0265 // [m]
 #define WHEEL_RADIUS		0.02 // [m]
 #define NSTEP_ONE_TURN		1000 // number of step for 1 turn of the motor
 #define WHEEL_PERIMETER		13 // [cm]
-#define TIME_ONE_TURN_100 	14.3 // [sec]
+#define TIME_ONE_TURN_200 	7.12 // [sec]
 
 #define MOTOR_RIGHT_A	GPIOE, 13
 #define MOTOR_RIGHT_B	GPIOE, 12
