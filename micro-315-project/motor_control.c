@@ -1,19 +1,18 @@
 #include <motors.h>
 #include <math.h>
-#include <leds.h>
 
 #define TIMER_CLOCK         84000000
 #define TIMER_FREQ          100000 // [Hz]
 #define MOTOR_SPEED_LIMIT   13 // [cm/s]
 #define NSTEP_ONE_EL_TURN   4  // number of steps to do 1 electrical turn
 #define NB_OF_PHASES        4  // number of phases of the motors
-#define ROTATION_SPEED 		50 // [step/s]
+#define ROTATION_SPEED 		200 // [step/s]
 #define TRANSLATION_SPEED	200 // [step/s]
 #define ROTATION_RADIUS		0.0265 // [m]
 #define WHEEL_RADIUS		0.02 // [m]
 #define NSTEP_ONE_TURN		1000 // number of step for 1 turn of the motor
 #define WHEEL_PERIMETER		13 // [cm]
-#define TIME_ONE_TURN_100 	14.3 // [sec]
+#define TIME_ONE_TURN_AT_200 	7.15 // [sec]
 
 #define MOTOR_RIGHT_A	GPIOE, 13
 #define MOTOR_RIGHT_B	GPIOE, 12
@@ -82,12 +81,10 @@ uint8_t motor_position_reached(void)
 void motor_rotation(int angle) { // we use the trigonometric orientation for the angle and 0<angle<2PI
 	float time;
 	// time = NSTEP_ONE_TURN*angle*ROTATION_RADIUS/(4*M_PI*ROTATION_SPEED*WHEEL_RADIUS);
-	time = TIME_ONE_TURN_100*angle/(2*M_PI);
+	time = TIME_ONE_TURN_AT_200*angle/(2*M_PI);
 	left_motor_set_speed(-ROTATION_SPEED);
 	right_motor_set_speed(ROTATION_SPEED);
-	set_front_led(1);
 	chThdSleepMilliseconds(time*1000);
-	set_front_led(0);
 	left_motor_set_speed(0);
 	right_motor_set_speed(0);
 }

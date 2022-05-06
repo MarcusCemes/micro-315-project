@@ -3,7 +3,7 @@ PROJECT = micro-315-project
 # Path to the e-pick2_main-processor folder
 GLOBAL_PATH = ../../lib/e-puck2_main-processor
 
-CSRC += main.c audio.c comms.c lights.c sensors.c utils.c vendor/mpack.c
+CSRC += main.c audio.c comms.c lights.c motor_control.c sensors.c utils.c vendor/mpack.c
 
 # Additional headers
 INCDIR +=
