@@ -17,6 +17,8 @@ ETX = b'\x03'  # ETX
 ESC = b'\x7d'  # }
 XOR = b'\x20'  # SPACE
 
+debug = "--debug" in argv
+
 console = Console()
 
 # Global variables that hold plot data
@@ -66,26 +68,27 @@ def process_data(encoded_data: str):
         console.log("[red]Could not unpack data!")
         console.log("[yellow]The e-puck2 device may need to be restarted")
         console.log(f"[yellow]{error}")
-        console.log(decoded_data)
+        if debug:
+            console.log(decoded_data)
         return
 
     global plot_needs_update, plot_pcm, plot_fft_re, plot_fft_im, plot_mag
 
     if data[0] == "PCM":
         plot_pcm = np.frombuffer(data[1], dtype=np.float32)
-        console.log(f"Received {len(plot_pcm)} PCM samples")
+        assert np.size(plot_pcm) == 1024
         plot_needs_update = True
 
     elif data[0] == "FFT":
         re_im = np.frombuffer(data[1], dtype=np.float32)
         plot_fft_re = re_im[::2]
         plot_fft_im = re_im[1::2]
+        assert np.size(plot_fft_re) == 1024
         plot_needs_update = True
-        console.log(f"Received {len(plot_fft_re)} FFT samples")
 
     elif data[0] == "MAG":
         plot_mag = np.frombuffer(data[1], dtype=np.float32)
-        console.log(f"Received {len(plot_mag)} MAG samples")
+        assert np.size(plot_mag) == 1024
         plot_needs_update = True
 
     else:
@@ -115,24 +118,27 @@ def read_from_port(port: Serial, token: CancellationToken):
 
             port.read_until(SFD)
             token.assert_ok()
-            console.log("[cyan]Start of transmission")
+            if debug:
+                console.log("[cyan]Start of transmission")
 
             data = bytearray()
             size_bytes = port.read(3)
             size = int.from_bytes(size_bytes, byteorder="big")
             token.assert_ok()
+            if debug:
+                console.log(f"[cyan]Size hint: {size}")
 
-            console.log(f"[cyan]Size hint: {size}")
             data.extend(port.read(size))
             token.assert_ok()
 
             data.extend(port.read_until(ETX)[:-1])
             token.assert_ok()
+            if debug:
+                console.log("[cyan]End of transmission")
 
-            console.log("[cyan]End of transmission")
             process_data(data)
 
-        except CancelledException:
+        except (CancelledException, KeyboardInterrupt):
             console.log("[cyan]Closing serial port...")
             port.close()
             return
