@@ -21,6 +21,7 @@
 #include "audio.h"
 #include "comms.h"
 #include "lights.h"
+#include "motor_control.h"
 #include "sensors.h"
 
 messagebus_t bus;
