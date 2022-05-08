@@ -17,7 +17,7 @@ jobs:
         id: cache
         uses: actions/cache@v3
         with:
-          key: build-dependencies
+          key: build-dependencies-v2
           path: |
             lib
             toolchain
@@ -27,7 +27,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: ChibiOS/ChibiOS
-          ref: ver3.0.5
           path: lib/ChibiOS
 
       - name: Download e-puck2_main-processor
@@ -45,7 +44,7 @@ jobs:
           repository: cvra/msgbus
           path: lib/msgbus
 
-      # Compilation fails on more recent toolchains
+      # Newer ARM toolchains are not compatible with project Makefile
       - name: Setup arm-none-eabi-gcc
         if: steps.cache.outputs.cache-hit != 'true'
         uses: fiam/arm-none-eabi-gcc@v1
