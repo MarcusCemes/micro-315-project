@@ -55,14 +55,14 @@ static uint8_t state_motor = 0;
 /* == Private functions == */
 
 /** Applies the given speeds to the left and right motors, respectively. */
-static void ctrl_individual_speed(int32_t speed_left, int32_t speed_right)
+static void motor_ctl_individual_speed(int32_t speed_left, int32_t speed_right)
 {
     left_motor_set_speed(speed_left);
     right_motor_set_speed(speed_right);
 }
 
 /** Applies the same speed to both the left and right motors. */
-static void ctl_common_speed(int32_t speed)
+static void motor_ctl_common_speed(int32_t speed)
 {
     ctrl_different_speed(speed, speed);
 }
@@ -71,15 +71,15 @@ static void ctl_common_speed(int32_t speed)
  * Applies the the speed to the left motor, and the
  * (additive) inverse to the right motor.
  */
-static void ctl_inverse_speed(int32_t speed)
+static void motor_ctl_inverse_speed(int32_t speed)
 {
     ctrl_different_speed(speed, -speed);
 }
 
 /** Stops both motors. */
-static void ctrl_stop(void)
+static void motor_ctl_stop(void)
 {
-    ctl_common_speed(STOP_SPEED);
+    motor_ctl_common_speed(STOP_SPEED);
 }
 
 /* == Public functions == */
@@ -97,7 +97,7 @@ void motor_set_position(float position_r, float position_l, float speed_r, float
     position_to_reach_left = position_l * (NSTEP_ONE_TURN / WHEEL_PERIMETER);
     position_to_reach_right = -position_r * (NSTEP_ONE_TURN / WHEEL_PERIMETER);
 
-    ctrl_individual_speed(speed_l, speed_r);
+    motor_ctl_individual_speed(speed_l, speed_r);
 
     // flag for position control, will erase flag for speed control only
     state_motor = POSITION_CONTROL;  //! ca sert a quelque chose ?
@@ -112,9 +112,9 @@ void motor_ctl_rotate(float angle)
 {
     // time = NSTEP_ONE_TURN*angle*ROTATION_RADIUS/(4*M_PI*ROTATION_SPEED*WHEEL_RADIUS);
     uint8_t time = angle * (TIME_ONE_TURN_AT_200 / M_TWOPI);
-    ctl_inverse_speed(-ROTATION_SPEED);
+    motor_ctl_inverse_speed(-ROTATION_SPEED);
     chThdSleep(S2ST(time));
-    ctrl_stop();
+    motor_ctl_stop();
 }
 
 void motor_rotation_bis(int32_t angle)
@@ -132,7 +132,7 @@ void motor_ctl_translate(float distance)
     uint32_t time = distance / (TRANSLATION_SPEED * WHEEL_RADIUS);
     ctrl_common_speed(TRANSLATION_SPEED);
     chThdSleep(S2ST(time));
-    ctrl_stop();
+    motor_ctl_stop();
 }
 
 void motor_translation_forward_bis(int32_t distance)
