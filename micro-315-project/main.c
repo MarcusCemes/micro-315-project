@@ -66,13 +66,7 @@ int main(void)
 
 static void serial_start(void)
 {
-    static SerialConfig ser_cfg = {
-        115200,
-        0,
-        0,
-        0,
-    };
-
+    static SerialConfig ser_cfg = { 115200, 0, 0, 0 };
     sdStart(&SD3, &ser_cfg);
 }
 
