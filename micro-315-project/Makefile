@@ -8,9 +8,17 @@ CSRC += main.c audio.c comms.c lights.c sensors.c utils.c vendor/mpack.c
 # Additional headers
 INCDIR +=
 
-# Disable optimisation for debugging, require a project clean
-# Lower optimisation does seem to cause stack overflows more frequently
+# Disable optimisation for debugging, requires a project clean
 # USE_COPT += -O0
+
+# Using -O0 globally increases memory usage signficiantly, causing
+# stack overflows. Instead, consider opting out of optimisation
+# for specific files/functions:
+#
+#   #pragma GCC push_options
+#   #pragma GCC optimize ("O0")
+#   ...
+#   #pragma GCC pop_options
 
 # Run the main Makefile
 include $(GLOBAL_PATH)/Makefile
