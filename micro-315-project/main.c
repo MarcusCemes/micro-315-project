@@ -1,21 +1,16 @@
 #include "main.h"
 
-#include <arm_math.h>
 #include <audio/audio_thread.h>
 #include <audio/microphone.h>
 #include <ch.h>
-#include <chprintf.h>
 #include <hal.h>
 #include <leds.h>
+#include <math.h>
 #include <memory_protection.h>
 #include <motors.h>
-#include <sensors/VL53L0X/VL53L0X.h>
-#include <sensors/mpu9250.h>
 #include <sensors/proximity.h>
 #include <spi_comm.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <usbcfg.h>
 
 #include "audio.h"
@@ -84,7 +79,6 @@ static void init(void)
     set_body_led(0);    // LEDS
     set_front_led(0);   // LEDS
     usb_start();        // USB
-    dcmi_start();       // Camera
     po8030_start();     // IC2, Camera
     motors_init();      // Motors
     proximity_start();  // Proximity sensors
