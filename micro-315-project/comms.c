@@ -1,6 +1,7 @@
 #include "comms.h"
 
 #include <ch.h>
+#include <chprintf.h>
 #include <hal.h>
 #include <stdarg.h>
 
@@ -8,12 +9,14 @@
 #include "vendor/mpack.h"
 
 #define COMMS_BUFFER_SIZE 256
-#define FORMAT_BUFFER_SIZE 256
+#define FORMAT_BUFFER_SIZE 1024
 
 /** Ensures that one one thread can send an uninterrupted message. */
 static mutex_t _comms_lock;
 /** A statically allocated buffer of reasonable size for serialization. */
 static uint8_t _comms_buffer[COMMS_BUFFER_SIZE];
+/** A statically allocated buffer of reasonable size for formatting. */
+static uint8_t _format_buffer[FORMAT_BUFFER_SIZE];
 
 /** Debug assertion. */
 static bool initialised = false;
@@ -43,7 +46,7 @@ union payload_size_t
  */
 static bool try_send(uint8_t byte)
 {
-    msg_t msg = chSequentialStreamPut(&SD3, byte);
+    msg_t msg = chSequentialStreamPut((BaseSequentialStream *)&SD3, byte);
     return msg == STM_OK;
 }
 
@@ -62,8 +65,8 @@ static bool transmit_start(size_t size_hint)
 {
     union payload_size_t size = { .integer = min(size_hint, MAX_SIZE) };
 
-    return try_send(SFD) && try_send(size.bytes[2]) && try_send(size.bytes[1]) &&
-           try_send(size.bytes[0]);
+    return try_send(SFD) && try_send(size.bytes[2]) && try_send(size.bytes[1])
+           && try_send(size.bytes[0]);
 }
 
 /**
@@ -166,22 +169,19 @@ bool comms_send_msg(char *type, char *data)
     return delivered;
 }
 
+#include <leds.h>
+
 bool comms_send_msg_f(char *type, const char *fmt, ...)
 {
     va_list args;
+    chMtxLock(&_comms_lock);
 
-    // Some threads have a very limited stack size,
-    // the string should be formatted on the heap
-    char *buffer = (char *)malloc(FORMAT_BUFFER_SIZE);
-
-    // Format the string
     va_start(args, fmt);
-    vsnprintf(buffer, FORMAT_BUFFER_SIZE, fmt, args);
+    chsnprintf((char *)_format_buffer, FORMAT_BUFFER_SIZE, fmt, args);
     va_end(args);
 
-    bool result = comms_send_msg(type, buffer);
-
-    free(buffer);
+    bool result = comms_send_msg(type, (char *)_format_buffer);
+    chMtxUnlock(&_comms_lock);
     return result;
 }
 
