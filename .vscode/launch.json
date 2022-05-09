@@ -13,7 +13,7 @@
       "debuggerArgs": ["-d", "${workspaceFolder}/micro-315-project"],
 
       "device": "STM32F407",
-      "svdFile": "../e-puck2_main-processor/STM32F407.svd",
+      "svdFile": "../lib/e-puck2_main-processor/STM32F407.svd",
 
       "runToEntryPoint": "main",
       "showDevDebugOutput": "none"
