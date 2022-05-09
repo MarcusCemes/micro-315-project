@@ -4,6 +4,7 @@
 #include <audio/microphone.h>
 #include <ch.h>
 #include <hal.h>
+#include <i2c_bus.h>
 #include <leds.h>
 #include <math.h>
 #include <memory_protection.h>
@@ -24,26 +25,14 @@ CONDVAR_DECL(bus_condvar);
 
 static void init(void);
 
-/** Send audio back every 500ms to the remote device for visualisation. */
 void send_audio(void)
 {
-    audio_register();
+    audio_subscribe();
 
     while (true)
-    {
         audio_wait();
 
-        audio_data_t* data = audio_data_borrow();
-        comms_send_buffer("PCM", (uint8_t*)data->pcm[FRONT], AUDIO_BUFFER_SIZE);
-        comms_send_buffer("FFT", (uint8_t*)data->fft[FRONT], AUDIO_BUFFER_SIZE);
-        comms_send_buffer("MAG", (uint8_t*)data->magnitudes[FRONT], AUDIO_BUFFER_SIZE);
-
-        audio_data_return();
-
-        chThdSleepMilliseconds(500);
-    }
-
-    audio_unregister();
+    audio_unsubscribe();
 }
 
 /* == Entry point == */
@@ -79,7 +68,7 @@ static void init(void)
     set_body_led(0);    // LEDS
     set_front_led(0);   // LEDS
     usb_start();        // USB
-    po8030_start();     // IC2, Camera
+    i2c_start();        // IC2
     motors_init();      // Motors
     proximity_start();  // Proximity sensors
     dac_start();        // Speaker
@@ -91,6 +80,7 @@ static void init(void)
     lights_init();   // Lights
     init_sensors();  // Sensors
 
+    audio_start();   // DSP thread
     lights_start();  // Lights thread
 }
 
