@@ -136,11 +136,15 @@ static void process_magnitude(audio_buffer_complex_t fft, audio_buffer_t magnitu
     arm_cmplx_mag_f32((float*)fft, (float*)magnitude, AUDIO_BUFFER_SIZE);
 }
 
-/** Finds the index of the maximum float value in an audio buffer. */
+/**
+ * Finds the index of the maximum float value in an audio buffer.
+ * As the FFT is symmetrical, this returns the maximum in the first
+ * half of the buffer only (which has an inverse phase!).
+ */
 static void find_peak_index(audio_buffer_t magnitude, size_t* index)
 {
     float value;
-    arm_max_f32((float*)magnitude, AUDIO_BUFFER_SIZE, &value, (uint32_t*)index);
+    arm_max_f32((float*)magnitude, AUDIO_BUFFER_SIZE / 2, &value, (uint32_t*)index);
 }
 
 /** Calculates the frequency associated with a FFT bin index. */
