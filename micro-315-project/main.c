@@ -6,17 +6,16 @@
 #include <hal.h>
 #include <i2c_bus.h>
 #include <leds.h>
-#include <math.h>
 #include <memory_protection.h>
 #include <motors.h>
 #include <sensors/proximity.h>
 #include <spi_comm.h>
-#include <stdlib.h>
 #include <usbcfg.h>
 
 #include "audio.h"
 #include "comms.h"
 #include "lights.h"
+#include "localisation.h"
 #include "sensors.h"
 
 messagebus_t bus;
@@ -25,16 +24,6 @@ CONDVAR_DECL(bus_condvar);
 
 static void init(void);
 
-void send_audio(void)
-{
-    audio_subscribe();
-
-    while (true)
-        audio_wait();
-
-    audio_unsubscribe();
-}
-
 /* == Entry point == */
 
 int main(void)
@@ -42,7 +31,6 @@ int main(void)
     init();
     trigger_lights(LIGHTS_WAITING, LIGHTS_LOOP);
     comms_send_msg("EVENT", "READY");
-    send_audio();
     chThdSleep(TIME_INFINITE);
 }
 
@@ -56,9 +44,9 @@ static void serial_start(void)
 
 static void init(void)
 {
-    halInit();    // HAL initialization
-    chSysInit();  // ChibiOS/RT initialization
-    mpu_init();   // Memory Protection initialization
+    halInit();    // HAL
+    chSysInit();  // ChibiOS/RT
+    mpu_init();   // Memory protection
 
     // Initialize the inter-process communication bus
     messagebus_init(&bus, &bus_lock, &bus_condvar);
