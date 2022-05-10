@@ -1,15 +1,5 @@
 #include "utils.h"
 
-inline size_t min(size_t a, size_t b)
-{
-    return a <= b ? a : b;
-}
-
-inline int8_t signf(float number)
-{
-    return number > 0 ? 1 : number < 0 ? -1 : 0;
-}
-
 /* == Readers-Writer lock implementation == */
 
 void rw_init(rw_lock_t* lock)

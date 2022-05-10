@@ -4,6 +4,8 @@
 #include <ch.h>
 #include <stdlib.h>
 
+/* == Definitions == */
+
 /**
  * Implementation of a Readers-Writer lock, favouring reads.
  * Allows a resource to be safely accessed by multiple threads
@@ -16,11 +18,20 @@ typedef struct
     int32_t readers;
 } rw_lock_t;
 
-/** Returns the smallest of two integers. */
-inline size_t min(size_t a, size_t b);
+/* == Inline functions == */
 
+/** Returns the smallest of two integers. */
+static inline size_t min(size_t a, size_t b)
+{
+    return a <= b ? a : b;
+}
 /** The sign of a float, returning -1, 0 or 1. */
-inline uint8_t signf(float number);
+static inline int8_t signf(float number)
+{
+    return number > 0 ? 1 : number < 0 ? -1 : 0;
+}
+
+/* == Readers-writer lock == */
 
 void rw_init(rw_lock_t* lock);
 void rw_read_lock(rw_lock_t* lock);
