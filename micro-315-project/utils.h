@@ -17,7 +17,18 @@ typedef struct
 } rw_lock_t;
 
 /** Returns the smallest of two integers. */
-size_t min(size_t a, size_t b);
+static inline size_t min(size_t a, size_t b)
+{
+    return a <= b ? a : b;
+}
+
+/** The sign of a float, returning -1, 0 or 1. */
+static inline int8_t signf(float number)
+{
+    return number > 0 ? 1 : number < 0 ? -1 : 0;
+}
+
+/* == Readers-writer lock == */
 
 void rw_init(rw_lock_t* lock);
 void rw_read_lock(rw_lock_t* lock);

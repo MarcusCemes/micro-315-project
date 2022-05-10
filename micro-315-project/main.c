@@ -2,6 +2,7 @@
 
 #include <audio/audio_thread.h>
 #include <audio/microphone.h>
+#include <audio/play_melody.h>
 #include <ch.h>
 #include <hal.h>
 #include <i2c_bus.h>
@@ -18,6 +19,7 @@
 #include "comms.h"
 #include "lights.h"
 #include "sensors.h"
+#include "speaker.h"
 
 messagebus_t bus;
 MUTEX_DECL(bus_lock);  // @suppress("Field cannot be resolved")
@@ -80,8 +82,9 @@ static void init(void)
     lights_init();   // Lights
     init_sensors();  // Sensors
 
-    audio_start();   // DSP thread
-    lights_start();  // Lights thread
+    audio_start();    // DSP thread
+    lights_start();   // Lights thread
+    speaker_start();  // Speaker thread
 }
 
 /* == Stack guard == */

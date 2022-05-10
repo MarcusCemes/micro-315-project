@@ -14,7 +14,7 @@ const uint16_t THRESHOLD = 500;
 static bool in_proximity(proximity_msg_t* values)
 {
     for (u_int i = 0; i < PROXIMITY_NB_CHANNELS; ++i)
-        if (abs(values->delta[i] - values->initValue[i]) > THRESHOLD)
+        if (abs((int32_t)(values->delta[i] - values->initValue[i])) > THRESHOLD)
             return true;
 
     return false;
