@@ -3,6 +3,7 @@
 #include <ch.h>
 #include <chprintf.h>
 #include <hal.h>
+#include <memstreams.h>
 #include <stdarg.h>
 
 #include "utils.h"
@@ -169,18 +170,22 @@ bool comms_send_msg(char *type, char *data)
     return delivered;
 }
 
-#include <leds.h>
-
 bool comms_send_msg_f(char *type, const char *fmt, ...)
 {
-    va_list args;
+    va_list ap;
+    MemoryStream ms;
+    msObjectInit(&ms, _format_buffer, FORMAT_BUFFER_SIZE - 1, 0);
+    BaseSequentialStream *chp = (BaseSequentialStream *)(void *)&ms;
+
     chMtxLock(&_comms_lock);
 
-    va_start(args, fmt);
-    chsnprintf((char *)_format_buffer, FORMAT_BUFFER_SIZE, fmt, args);
-    va_end(args);
+    va_start(ap, fmt);
+    chvprintf(chp, fmt, ap);
+    va_end(ap);
 
+    _format_buffer[ms.eos] = 0;
     bool result = comms_send_msg(type, (char *)_format_buffer);
+
     chMtxUnlock(&_comms_lock);
     return result;
 }
