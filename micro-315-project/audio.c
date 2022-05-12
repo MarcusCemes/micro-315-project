@@ -6,10 +6,10 @@
 #include <ch.h>
 #include <hal.h>
 
-#include "comms.h"
 #include "utils.h"
 
 /** The amount of samples received expected by the callback function. */
+#define CALLBACK_CHANNEL_SAMPLES 160
 #define CALLBACK_SAMPLES 4 * 160
 
 /** The size of an audio buffer that is processed all at once. */
@@ -52,7 +52,7 @@ static binary_semaphore_t _process_signal;
 static bool _processing_active = false;
 
 /** Workspace for calculating the FFT. */
-static audio_buffer_complex_t fft_buffer;
+static audio_buffer_complex_t _fft_buffer;
 
 /* == Audio data == */
 
@@ -66,11 +66,6 @@ static audio_data_t _audio_data;
 static rw_lock_t _audio_data_lock;
 
 /* === Audio recording === */
-
-static bool audio_buffer_full(void)
-{
-    return _pcm_index == AUDIO_BUFFER_SIZE;
-}
 
 /**
  * Callback when digital microphone data is ready. The microphones
@@ -96,17 +91,16 @@ static void pcm_ready_cb(int16_t* pcm, uint16_t data_count)
     }
 
     // The number of samples that can be appended to the PCM buffer
-    size_t samples_to_append = min(data_count / A_CHANNELS, AUDIO_BUFFER_SIZE - _pcm_index);
+    size_t samples_to_append = min(CALLBACK_CHANNEL_SAMPLES, AUDIO_BUFFER_SIZE - _pcm_index);
 
     // Read time-sequential data, seperating each channel
     for (size_t i = 0; i < samples_to_append; (++_pcm_index, ++i))
         for (uint8_t channel = 0; channel < A_CHANNELS; ++channel)
             _pcm_buffer[channel][_pcm_index] = pcm[i * A_CHANNELS + channel];
 
-    if (audio_buffer_full())
+    if (_pcm_index >= AUDIO_BUFFER_SIZE)
     {
         _processing_active = true;
-        _pcm_index = 0;
 
         chSysLock();
         chBSemSignalI(&_process_signal);
@@ -169,23 +163,23 @@ static float bin_index_to_freq(size_t index)
  */
 static void analyse_audio_channel(audio_channel_t channel, bool write_peak)
 {
-    pcm_to_complex(_pcm_buffer[channel], fft_buffer);
-    process_fft(fft_buffer);
+    pcm_to_complex(_pcm_buffer[channel], _fft_buffer);
+    process_fft(_fft_buffer);
 
     audio_polar_t* value = &_audio_data.value[channel];
 
     if (write_peak)
     {
-        process_magnitude(fft_buffer, _pcm_buffer[channel]);
+        process_magnitude(_fft_buffer, _pcm_buffer[channel]);
         find_peak_index(_pcm_buffer[channel], &_audio_data.index);
         value->magnitude = _pcm_buffer[channel][_audio_data.index];
     }
     else
     {
-        value->magnitude = cabsf(fft_buffer[_audio_data.index]);
+        value->magnitude = cabsf(_fft_buffer[_audio_data.index]);
     }
 
-    value->phase = cargf(fft_buffer[_audio_data.index]);
+    value->phase = cargf(_fft_buffer[_audio_data.index]);
 }
 
 /**
@@ -225,6 +219,8 @@ static THD_FUNCTION(processing_thread, arg)
         chBSemWait(&_process_signal);
 
         process_audio();
+
+        _pcm_index = 0;
         _processing_active = false;
 
         chSysLock();

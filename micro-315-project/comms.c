@@ -66,8 +66,8 @@ static bool transmit_start(size_t size_hint)
 {
     union payload_size_t size = { .integer = min(size_hint, MAX_SIZE) };
 
-    return try_send(SFD) && try_send(size.bytes[2]) && try_send(size.bytes[1]) &&
-           try_send(size.bytes[0]);
+    return try_send(SFD) && try_send(size.bytes[2]) && try_send(size.bytes[1])
+           && try_send(size.bytes[0]);
 }
 
 /**

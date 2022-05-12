@@ -41,6 +41,17 @@ static inline float rad2deg(float radians)
     return radians * PI_AS_DEG / M_PI;
 }
 
+/**
+ * A fast implementation of `i = (i + 1) % modulo`, using a branch.
+ * This will only check if the incremented value is **equal** to
+ * the modulo value to reset to zero!
+ */
+static inline size_t inc_mod(size_t i, size_t modulo)
+{
+    size_t incremented = i + 1;
+    return incremented == modulo ? 0 : incremented;
+}
+
 /* == Readers-writer lock == */
 
 void rw_init(rw_lock_t* lock);
