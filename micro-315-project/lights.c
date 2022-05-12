@@ -89,11 +89,11 @@ static bool animation_spin(void)
     for (uint8_t i = 0; i < NUM_LED; ++i)
     {
         set_led(i, ON);
-        TRY_WAIT(200);
+        TRY_WAIT(100);
         set_led(i, OFF);
 
         set_rgb_led(i, MAX_INTENSITY, OFF, OFF);
-        TRY_WAIT(200);
+        TRY_WAIT(100);
         set_rgb_led(i, OFF, OFF, OFF);
     }
 

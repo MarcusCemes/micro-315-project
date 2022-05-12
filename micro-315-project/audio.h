@@ -2,63 +2,67 @@
 #define AUDIO_H
 
 #include <complex.h>
+#include <stdint.h>
 
 /* == Definitions == */
 
-/** The amount of samples to collect and process at once. */
-#define AUDIO_BUFFER_SIZE 1024
-
-/** The order of microphone streams as received by the callback. */
+/** A list of audio channels, in the order as received from the microphones. */
 typedef enum
 {
-    RIGHT,
-    LEFT,
-    BACK,
-    FRONT,
-    CHANNELS,
-} Channel;
+    A_RIGHT,
+    A_LEFT,
+    A_BACK,
+    A_FRONT,
+    A_CHANNELS,
+} audio_channel_t;
 
-typedef float audio_buffer_t[CHANNELS][AUDIO_BUFFER_SIZE];
-typedef complex float audio_buffer_complex_t[CHANNELS][AUDIO_BUFFER_SIZE];
-
+/** The polar components associated with a complex number. */
 typedef struct
 {
-    audio_buffer_t pcm;
-    audio_buffer_complex_t fft;
-    audio_buffer_t magnitudes;
+    float magnitude;
+    float phase;
+} audio_polar_t;
+
+/**
+ * Contains the magnitude and phase of each channel for a particular
+ * frequency. The frequency is chosen as the peak magnitude of the
+ * A_BACK channel.
+ */
+typedef struct
+{
+    size_t index;
+    float frequency;
+    audio_polar_t value[A_CHANNELS];
 } audio_data_t;
 
 /* == Public functions = */
 
 /**
- * Register a new data listener, ensuring that the processing thread
- * is active. This listener must be unregsitered when no longer needed.
+ * Register a new event listener. The processing thread will be scheduled
+ * while there is at least one active listener. Unregister the listener
+ * with `audio_unsubscribe()`.
  */
-void audio_register(void);
+void audio_subscribe(void);
 
 /**
- * Unregisters a data listener. If there are no more listeners, the
- * audio thread will go into a low-power state until a listener is
- * registered.
+ * Unregisters a single event listener. If there are no active event
+ * listeners, the processing thread halt audio recording and processing.
  */
-void audio_unregister(void);
+void audio_unsubscribe(void);
 
-/**
- * Blocks until fresh audio data is ready. Will block indefinitely if
- * no listeners were registered.
- */
+/** Wait until the processing thread signals that new data is ready. */
 void audio_wait(void);
 
-/** Borrow a read-only lock and reference to the audio data. */
+/** Acquire a read-lock on the audio data, returning a reference to it. */
 audio_data_t* audio_data_borrow(void);
 
-/**
- * Return a read-only reference, allowing the audio thread to acquire
- * a write lock on the data.
- */
+/** Release a previously-acquired read-lock. */
 void audio_data_return(void);
 
-/** Initialize audio-related resources and start the processing thread. */
+/** Initialize audio-related resources. */
 void audio_init(void);
+
+/** Start receiving microphone data and start the audio processing thread. */
+void audio_start(void);
 
 #endif

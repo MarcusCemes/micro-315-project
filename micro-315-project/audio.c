@@ -12,91 +12,64 @@
 /** The amount of samples received expected by the callback function. */
 #define CALLBACK_SAMPLES 4 * 160
 
+/** The size of an audio buffer that is processed all at once. */
+#define AUDIO_BUFFER_SIZE 1024
+
+/** Microphone sample rate is 16 kHz. */
+#define SAMPLE_RATE 16000
+
+typedef float audio_buffer_t[AUDIO_BUFFER_SIZE];
+typedef complex float audio_buffer_complex_t[AUDIO_BUFFER_SIZE];
+typedef audio_buffer_t audio_buffers_t[A_CHANNELS];
+
+/* == Listeners == */
+
 /**
- * To reduce the amount of data created, this is how many
- * samples will be skipped once the buffer is filled. It takes
- * 7 cycles ot fill the buffer, so a gap of 7 will ensure
- * that only 50% of microphone data is processed (so every ~128ms).
+ * The number of subscribed event listeners. This is used to determine
+ * whether the audio should be recorded and processed.
  */
-#define ACQUISITION_GAP 7
+static size_t _listeners;
+
 /**
- * The number of data listeners. Audio processing stops if there
- * are no registered listeners.
+ * Threads that are registered as event listeners may wait for an
+ * audio data event. When processing is completed, all enqueued threads
+ * will be enqueued. Waiting without being registered may result in a deadlock.
  */
-static semaphore_t _data_listeners;
+static threads_queue_t _listeners_waiting;
 
-/** Synchronised read/write access to the processed data. */
-static rw_lock_t _data_lock;
+/* == PCM & processing == */
 
-/** Signal to any waiting threads that new processed data is ready. */
-static semaphore_t _data_ready;
+/** The amount of data already stored in the audio buffer. */
+static size_t _pcm_index = 0;
 
-/** Synchronise access to the acquisition buffer. */
-static mutex_t _acquisition_lock;
+/** Stores the PCM data of seperated microphone channels. */
+static audio_buffers_t _pcm_buffer;
 
-/** The counter used to skip over certain microphone samples. */
-static uint8_t _gap_counter = 0;
+/** Signal the processing thread to start processing the _pcm buffer. */
+static binary_semaphore_t _process_signal;
 
-/** Signal to the audio processing thread that new data is ready for procesing. */
-static binary_semaphore_t _data_acquired_signal;
+/** Whether the processing thread is busy. Used as cheap synchronisation. */
+static bool _processing_active = false;
 
-/** Points to the free index of the acquisition buffer, indicating its filled capacity. */
-static size_t _acquisition_index = 0;
+/** Workspace for calculating the FFT. */
+static audio_buffer_complex_t fft_buffer;
 
-/** Buffer that holds sampled microphone data as it's acquired. */
-static audio_buffer_t _acquisition;
+/* == Audio data == */
 
 /**
- * Buffers that hold the complex FFT transform data as well as
- * the computed magnitude data. Accessing this variable requires
- * that the _data_lock be acquired.
+ * Holds computed peak magnitude and the corresponding phase.
+ * Access to this buffer requires an _audio_data_lock lock.
  */
 static audio_data_t _audio_data;
 
-/**
- * Finds the peak value of a buffer of float values.
- * @returns the index of the peak value
- */
-static size_t find_peak_f32(float buffer[], size_t count)
+/** Inter-thread readers-writer lock for _audio_data. */
+static rw_lock_t _audio_data_lock;
+
+/* === Audio recording === */
+
+static bool audio_buffer_full(void)
 {
-    size_t max_index = 0;
-
-    for (size_t i = 0; i < count; ++i)
-        if (buffer[i] > buffer[max_index])
-            max_index = i;
-
-    return max_index;
-}
-
-/** Carries out a in-place hardware-accelerated FFT on PCM data. */
-static void process_audio_fft(audio_data_t* data)
-{
-    // Compute the in-place FFT and magnitude of the FFT result using
-    // hardware accelerated instructions on the Cortex-M4 DSP.
-    for (uint8_t channel = 0; channel < CHANNELS; ++channel)
-    {
-        arm_cfft_f32(&arm_cfft_sR_f32_len1024, (float*)data->fft[channel], 0, 1);
-        arm_cmplx_mag_f32((float*)data->fft[channel], (float*)data->magnitudes[channel],
-                          AUDIO_BUFFER_SIZE);
-    }
-}
-
-/** Process the acquired microphone data once the buffers are full. */
-static void process_audio(void)
-{
-    chMtxLock(&_acquisition_lock);
-    rw_write_lock(&_data_lock);
-
-    // Copy the data to release the acquisition buffer as soon as possible
-    // Also convert float values to complex floats for processing
-    for (size_t i = 0; i < CHANNELS; ++i)
-        for (size_t j = 0; j < AUDIO_BUFFER_SIZE; ++j)
-            _audio_data.fft[i][j] = _audio_data.pcm[i][j] = _acquisition[i][j];
-
-    chMtxUnlock(&_acquisition_lock);
-
-    process_audio_fft(&_audio_data);
-    rw_write_unlock(&_data_lock);
+    return _pcm_index == AUDIO_BUFFER_SIZE;
 }
 
 /**
@@ -110,109 +83,200 @@ static void process_audio(void)
  *
  * It takes 7 buffers to completely fill the processing buffer.
  */
-static void audio_data_ready_cb(int16_t* data, uint16_t data_count)
+static void pcm_ready_cb(int16_t* pcm, uint16_t data_count)
 {
     chDbgCheck(data_count == CALLBACK_SAMPLES);
 
-    if (_gap_counter > 0)
+    // Simple check should not require atomics or locks, as the
+    // data acquisition is simply reset and can be restarted
+    if (_listeners == 0 || _processing_active)
     {
-        --_gap_counter;
+        _pcm_index = 0;
         return;
     }
 
-    // If there are no listeners, don't record data.
-    chSysLock();
-    size_t listeners = chSemGetCounterI(&_data_listeners);
-    chSysUnlock();
+    // The number of samples that can be appended to the PCM buffer
+    size_t samples_to_append = min(data_count / A_CHANNELS, AUDIO_BUFFER_SIZE - _pcm_index);
 
-    if (listeners == 0)
-        return;
+    // Read time-sequential data, seperating each channel
+    for (size_t i = 0; i < samples_to_append; (++_pcm_index, ++i))
+        for (uint8_t channel = 0; channel < A_CHANNELS; ++channel)
+            _pcm_buffer[channel][_pcm_index] = pcm[i * A_CHANNELS + channel];
 
-    bool locked = chMtxTryLock(&_acquisition_lock);
-
-    // If the processing thread has still not finished with the acquisition buffer
-    // (the mutex could not be acquired), start recording from the beginning.
-    if (!locked)
-        _acquisition_index = 0;
-
-    // Read time-sequential data, splitting mixed audio channels into
-    // their respective buffers
-    size_t samples_to_append = min(data_count / CHANNELS, AUDIO_BUFFER_SIZE - _acquisition_index);
-    for (size_t i = 0; i < samples_to_append; ++i)
-        for (uint8_t channel = 0; channel < CHANNELS; ++channel)
-            _acquisition[channel][_acquisition_index + i] = data[CHANNELS * i + channel];
-
-    _acquisition_index += samples_to_append;
-
-    if (locked)
-        chMtxUnlock(&_acquisition_lock);
-
-    // Notify the processing thread that the acquisition buffer is full
-    if (_acquisition_index == AUDIO_BUFFER_SIZE)
+    if (audio_buffer_full())
     {
-        chBSemSignal(&_data_acquired_signal);
-        _acquisition_index = 0;
-        _gap_counter = ACQUISITION_GAP;
+        _processing_active = true;
+        _pcm_index = 0;
+
+        chSysLock();
+        chBSemSignalI(&_process_signal);
+        chSchRescheduleS();
+        chSysUnlock();
     }
 }
 
+/* === Audio processing === */
+
+/** Copies PCM buffer data to a PCM complex buffer (zero imaginary component). */
+static void pcm_to_complex(audio_buffer_t pcm, audio_buffer_complex_t buffer)
+{
+    for (size_t i = 0; i < AUDIO_BUFFER_SIZE; ++i)
+        buffer[i] = pcm[i];
+}
+
+/** Calculates the FFT of a complex buffer contaning real PCM data. */
+static void process_fft(audio_buffer_complex_t buffer)
+{
+    arm_cfft_f32(&arm_cfft_sR_f32_len1024, (float*)buffer, false, true);
+}
+
+/** Calculates the magnitude of every index of an FFT. */
+static void process_magnitude(audio_buffer_complex_t fft, audio_buffer_t magnitude)
+{
+    arm_cmplx_mag_f32((float*)fft, (float*)magnitude, AUDIO_BUFFER_SIZE);
+}
+
+/**
+ * Finds the index of the maximum float value in an audio buffer.
+ * As the FFT is symmetrical, this returns the maximum in the first
+ * half of the buffer only (which has an inverse phase!).
+ */
+static void find_peak_index(audio_buffer_t magnitude, size_t* index)
+{
+    float value;
+    arm_max_f32((float*)magnitude, AUDIO_BUFFER_SIZE / 2, &value, (uint32_t*)index);
+}
+
+/** Calculates the frequency associated with a FFT bin index. */
+static float bin_index_to_freq(size_t index)
+{
+    return (float)index * SAMPLE_RATE / AUDIO_BUFFER_SIZE;
+}
+
+/**
+ * Calculates the magnitude and phase of a PCM channel using
+ * hardware-accelerated instructions on the Cortex-M4 DSP.
+ *
+ * If `write_peak` is true, the FFT buffer will also be analysed
+ * to find the maximum magnitude and associated index. This index
+ * will be written to the _audio_data `peak` field. This operation
+ * wil overwrite the original PCM buffer, as it's no longer needed!
+ *
+ * If `write_peak` is false, the existing peak index in `_audio_data`
+ * will be used.
+ *
+ * The resulting magnitude and phase are written directly to `_audio_data`.
+ */
+static void analyse_audio_channel(audio_channel_t channel, bool write_peak)
+{
+    pcm_to_complex(_pcm_buffer[channel], fft_buffer);
+    process_fft(fft_buffer);
+
+    audio_polar_t* value = &_audio_data.value[channel];
+
+    if (write_peak)
+    {
+        process_magnitude(fft_buffer, _pcm_buffer[channel]);
+        find_peak_index(_pcm_buffer[channel], &_audio_data.index);
+        value->magnitude = _pcm_buffer[channel][_audio_data.index];
+    }
+    else
+    {
+        value->magnitude = cabsf(fft_buffer[_audio_data.index]);
+    }
+
+    value->phase = cargf(fft_buffer[_audio_data.index]);
+}
+
+/**
+ * Efficient audio processing that performs a FFT and magnitude analysis
+ * on the PCM data.
+ *
+ * Populates the _audio_data buffer with peak index, associated frequency
+ * and the magnitude and phase of each channel at that index.
+ *
+ * The peak index is selected as the index of the maximum of the A_BACK
+ * channel magnitude buffer. This index is then used for the remaining
+ * channels to guarantee that they are analysed at the same frequency.
+ */
+static void process_audio(void)
+{
+    chDbgCheck(_processing_active == true);
+    rw_write_lock(&_audio_data_lock);
+
+    analyse_audio_channel(A_BACK, true);
+    analyse_audio_channel(A_RIGHT, false);
+    analyse_audio_channel(A_LEFT, false);
+    analyse_audio_channel(A_FRONT, false);
+
+    _audio_data.frequency = bin_index_to_freq(_audio_data.index);
+
+    rw_write_unlock(&_audio_data_lock);
+}
+
 static THD_WORKING_AREA(processing_stack, 1024);
-static THD_FUNCTION(processing_thread, arg)  // @suppress("No return")
+static THD_FUNCTION(processing_thread, arg)
 {
     (void)arg;
     chRegSetThreadName(__FUNCTION__);
 
     while (!chThdShouldTerminateX())
     {
-        // Run if there are active listeners
-        chSemWait(&_data_listeners);
-        chSemSignal(&_data_listeners);
+        chBSemWait(&_process_signal);
 
         process_audio();
+        _processing_active = false;
 
-        // Notify any waiting listeners
-        chSemReset(&_data_ready, 0);
+        chSysLock();
+        chThdDequeueAllI(&_listeners_waiting, MSG_OK);
+        chSchRescheduleS();
+        chSysUnlock();
     }
 }
 
-/* == Public functions == */
+/* === Public functions === */
 
-void audio_register()
+void audio_subscribe()
 {
-    chSemSignal(&_data_listeners);
+    chSysLock();
+    _listeners += 1;
+    chSysUnlock();
 }
 
-void audio_unregister()
+void audio_unsubscribe()
 {
-    chSemWait(&_data_listeners);
+    chSysLock();
+    _listeners -= 1;
+    chSysUnlock();
 }
 
 void audio_wait()
 {
-    chSemWait(&_data_ready);
+    chSysLock();
+    chThdEnqueueTimeoutS(&_listeners_waiting, TIME_INFINITE);
+    chSysUnlock();
 }
 
 audio_data_t* audio_data_borrow()
 {
-    rw_read_lock(&_data_lock);
+    rw_read_lock(&_audio_data_lock);
     return &_audio_data;
 }
 
 void audio_data_return()
 {
-    rw_read_unlock(&_data_lock);
+    rw_read_unlock(&_audio_data_lock);
 }
 
 void audio_init(void)
 {
-    rw_init(&_data_lock);
-    chSemObjectInit(&_data_ready, 0);
-    chSemObjectInit(&_data_listeners, 0);
-    chMtxObjectInit(&_acquisition_lock);
-    chBSemObjectInit(&_data_acquired_signal, true);
+    chThdQueueObjectInit(&_listeners_waiting);
+    chBSemObjectInit(&_process_signal, true);
+    rw_init(&_audio_data_lock);
+}
 
-    mic_start(audio_data_ready_cb);
-
-    (void)chThdCreateStatic(processing_stack, sizeof(processing_stack), LOWPRIO, processing_thread,
-                            NULL);
+void audio_start(void)
+{
+    mic_start(pcm_ready_cb);
+    chThdCreateStatic(processing_stack, sizeof(processing_stack), LOWPRIO, processing_thread, NULL);
 }

@@ -1,19 +1,23 @@
 #include "comms.h"
 
 #include <ch.h>
+#include <chprintf.h>
 #include <hal.h>
+#include <memstreams.h>
 #include <stdarg.h>
 
 #include "utils.h"
 #include "vendor/mpack.h"
 
 #define COMMS_BUFFER_SIZE 256
-#define FORMAT_BUFFER_SIZE 256
+#define FORMAT_BUFFER_SIZE 1024
 
 /** Ensures that one one thread can send an uninterrupted message. */
 static mutex_t _comms_lock;
 /** A statically allocated buffer of reasonable size for serialization. */
 static uint8_t _comms_buffer[COMMS_BUFFER_SIZE];
+/** A statically allocated buffer of reasonable size for formatting. */
+static uint8_t _format_buffer[FORMAT_BUFFER_SIZE];
 
 /** Debug assertion. */
 static bool initialised = false;
@@ -43,7 +47,7 @@ union payload_size_t
  */
 static bool try_send(uint8_t byte)
 {
-    msg_t msg = chSequentialStreamPut(&SD3, byte);
+    msg_t msg = chSequentialStreamPut((BaseSequentialStream *)&SD3, byte);
     return msg == STM_OK;
 }
 
@@ -168,20 +172,22 @@ bool comms_send_msg(char *type, char *data)
 
 bool comms_send_msg_f(char *type, const char *fmt, ...)
 {
-    va_list args;
+    va_list ap;
+    MemoryStream ms;
+    msObjectInit(&ms, _format_buffer, FORMAT_BUFFER_SIZE - 1, 0);
+    BaseSequentialStream *chp = (BaseSequentialStream *)(void *)&ms;
 
-    // Some threads have a very limited stack size,
-    // the string should be formatted on the heap
-    char *buffer = (char *)malloc(FORMAT_BUFFER_SIZE);
+    chMtxLock(&_comms_lock);
 
-    // Format the string
-    va_start(args, fmt);
-    vsnprintf(buffer, FORMAT_BUFFER_SIZE, fmt, args);
-    va_end(args);
+    va_start(ap, fmt);
+    chvprintf(chp, fmt, ap);
+    va_end(ap);
 
-    bool result = comms_send_msg(type, buffer);
+    _format_buffer[ms.eos] = 0;
 
-    free(buffer);
+    bool result = comms_send_msg(type, (char *)_format_buffer);
+
+    chMtxUnlock(&_comms_lock);
     return result;
 }
 

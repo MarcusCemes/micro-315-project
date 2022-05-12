@@ -31,8 +31,8 @@ bool comms_send_buffer(char *type, uint8_t *data, size_t count);
 bool comms_send_msg(char *type, char *data);
 
 /**
- * Similar to comms_send_msg(), but formats the string on
- * the heap first.
+ * Similar to comms_send_msg(), but formats the string in
+ * a static buffer first. MUST NOT EXCEED 1kB!
  *
  * @returns true if the transmission was successful
  */

@@ -1,4 +1,5 @@
 .vscode/*.log
+.vscode/.cortex-debug.*.json
 **/.DS_Store
 
 micro-315-project/.dep

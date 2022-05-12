@@ -17,18 +17,10 @@ jobs:
         id: cache
         uses: actions/cache@v3
         with:
-          key: build-dependencies
+          key: build-dependencies-v3
           path: |
             lib
-            toolchain
-
-      - name: Download ChibiOS
-        if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v3
-        with:
-          repository: ChibiOS/ChibiOS
-          ref: ver3.0.5
-          path: lib/ChibiOS
+            gcc-arm-none-eabi-9-2019-q4
 
       - name: Download e-puck2_main-processor
         if: steps.cache.outputs.cache-hit != 'true'
@@ -38,24 +30,26 @@ jobs:
           path: lib/e-puck2_main-processor
           submodules: true
 
-      - name: Download msgbus
+      # Not needed for compilation, example for setting up the dev environment
+      - name: Download SVD for STM32F407
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v3
-        with:
-          repository: cvra/msgbus
-          path: lib/msgbus
+        run:
+          wget -O lib/e-puck2_main-processor/STM32F407.svd
+          https://raw.githubusercontent.com/posborne/cmsis-svd/master/data/STMicro/STM32F407.svd
 
-      # Compilation fails on more recent toolchains
+      # Newer toolchains have compatibility issues with Makefile and GDB source maps
       - name: Setup arm-none-eabi-gcc
         if: steps.cache.outputs.cache-hit != 'true'
         uses: fiam/arm-none-eabi-gcc@v1
         with:
           release: 9-2019-q4
-          directory: toolchain
+          directory: gcc-arm-none-eabi-9-2019-q4
 
       # fiam/arm-none-eabi-gcc does not add the bin folder to $PATH
       - name: Add arm-none-eabi-gcc to path
-        run: echo "${GITHUB_WORKSPACE}/toolchain/bin" >> $GITHUB_PATH
+        run:
+          echo "${GITHUB_WORKSPACE}/gcc-arm-none-eabi-9-2019-q4/bin" >>
+          $GITHUB_PATH
 
       - name: Compile
         working-directory: micro-315-project/micro-315-project
