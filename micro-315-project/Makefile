@@ -8,6 +8,7 @@ CSRC += main.c          \
         comms.c         \
         lights.c        \
         localisation.c  \
+        motor_control.c \
         sensors.c       \
         speaker.c       \
         utils.c         \

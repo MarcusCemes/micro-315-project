@@ -17,6 +17,7 @@
 #include "comms.h"
 #include "lights.h"
 #include "localisation.h"
+#include "motor_control.h"
 #include "sensors.h"
 #include "speaker.h"
 
@@ -68,10 +69,12 @@ static void init(void)
     audio_init();    // Audio
     init_comms();    // Communication
     lights_init();   // Lights
+    mctl_init();     // Motor control
     init_sensors();  // Sensors
 
     audio_start();    // DSP thread
     lights_start();   // Lights thread
+    mctl_start();     // Motor timers
     speaker_start();  // Speaker thread
 }
 

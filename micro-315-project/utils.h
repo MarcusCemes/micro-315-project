@@ -24,9 +24,21 @@ typedef struct
 /* == Inline functions == */
 
 /** Returns the smallest of two integers. */
-static inline size_t min(size_t a, size_t b)
+static inline uint32_t min(size_t a, size_t b)
 {
     return a <= b ? a : b;
+}
+
+/** Returns the largest of two integers. */
+static inline uint32_t max(size_t a, size_t b)
+{
+    return a <= b ? a : b;
+}
+
+/** Returns the interget, restricted to a certain domain. */
+static inline uint32_t clamp(size_t x, size_t low, size_t high)
+{
+    return max(min(x, high), low);
 }
 
 /** The sign of a float, returning -1, 0 or 1. */
