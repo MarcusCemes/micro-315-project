@@ -2,7 +2,12 @@
 #define UTILS_H
 
 #include <ch.h>
+#include <math.h>
 #include <stdlib.h>
+
+/* == Definitions == */
+
+#define PI_AS_DEG 180
 
 /**
  * Implementation of a Readers-Writer lock, favouring reads.
@@ -16,6 +21,8 @@ typedef struct
     int32_t readers;
 } rw_lock_t;
 
+/* == Inline functions == */
+
 /** Returns the smallest of two integers. */
 static inline size_t min(size_t a, size_t b)
 {
@@ -26,6 +33,12 @@ static inline size_t min(size_t a, size_t b)
 static inline int8_t signf(float number)
 {
     return number > 0 ? 1 : number < 0 ? -1 : 0;
+}
+
+/** COnvert radians to degrees. */
+static inline float rad2deg(float radians)
+{
+    return radians * PI_AS_DEG / M_PI;
 }
 
 /* == Readers-writer lock == */

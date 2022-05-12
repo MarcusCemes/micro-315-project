@@ -66,8 +66,8 @@ static bool transmit_start(size_t size_hint)
 {
     union payload_size_t size = { .integer = min(size_hint, MAX_SIZE) };
 
-    return try_send(SFD) && try_send(size.bytes[2]) && try_send(size.bytes[1])
-           && try_send(size.bytes[0]);
+    return try_send(SFD) && try_send(size.bytes[2]) && try_send(size.bytes[1]) &&
+           try_send(size.bytes[0]);
 }
 
 /**
@@ -184,6 +184,7 @@ bool comms_send_msg_f(char *type, const char *fmt, ...)
     va_end(ap);
 
     _format_buffer[ms.eos] = 0;
+
     bool result = comms_send_msg(type, (char *)_format_buffer);
 
     chMtxUnlock(&_comms_lock);
