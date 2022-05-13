@@ -7,6 +7,7 @@
 #include <hal.h>
 #include <i2c_bus.h>
 #include <leds.h>
+#include <math.h>
 #include <memory_protection.h>
 #include <motors.h>
 #include <sensors/proximity.h>
@@ -17,6 +18,7 @@
 #include "comms.h"
 #include "lights.h"
 #include "localisation.h"
+#include "motor_control.h"
 #include "sensors.h"
 #include "speaker.h"
 
