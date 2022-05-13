@@ -24,10 +24,10 @@ uint32_t mctl_get_counter(mctl_side_t side);
 void mctl_set_counter(mctl_side_t side, uint32_t steps);
 
 /** Set the angular velocity of both motors, with the left motor is inverted. */
-void mctl_set_inverse_speed(int16_t velocity);
+void mctl_set_inverse_velocity(int16_t velocity);
 
 /** Set the angular velocity of both motors. */
-void mctl_set_common_speed(int16_t velocity);
+void mctl_set_common_velocity(int16_t velocity);
 
 /**
  * Set the angular velocity [step/s] of a motor. Setting to zero will

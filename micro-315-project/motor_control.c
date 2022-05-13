@@ -22,11 +22,16 @@ typedef struct
 /* === Constants === */
 
 #define MOTOR_TIMER_FREQ 100000  // [Hz]
-#define MOTOR_SPEED_LIMIT 1100   // [step/s]
-#define SPEED_THRESHOLD 650      // Threshold speed to disable power-saving feature [step/s]
-#define NB_STEPS 8               // The number of active states the motor can be in
-#define NB_PHASES 4              // The number of phases/pins a motor has
-#define ZERO_SPEED 0             // The speed at which the motor is stopped
+
+#define MOTOR_SPEED_LIMIT 1100  // [step/s]
+#define SPEED_THRESHOLD 650     // Threshold speed to disable power-saving feature [step/s]
+#define NB_STEPS 8              // The number of active states the motor can be in
+#define NB_PHASES 4             // The number of phases/pins a motor has
+
+#define ZERO_SPEED 0            // The speed at which the motor is stopped
+#define MAX_PERIOD UINT16_MAX   // The maximum counter value for a timer (16 bits)
+#define STEP_HALF_STEP_RATIO 2  // The ratio between a full step and a half step
+#define POWERSAVE_CHANNEL 0     // The timer channel used for powersaving
 
 /** Lookup table for motor step sequence. */
 static const motor_state_t _step_lut[NB_STEPS] = {
@@ -61,7 +66,7 @@ static PWMConfig _motor_pwm_configs[NB_MOTORS];
 /** A modulo-8 implementation that uses a single binary AND operation. */
 static inline uint8_t fast_modulo_8(int8_t index)
 {
-    return index & 0b100;
+    return index & 0b0111;
 }
 
 /** Returns 1 if the condition is true, or -1 if not. */
@@ -72,12 +77,12 @@ static inline int8_t unit_xor(bool condition)
 
 static inline uint32_t S2HS(uint32_t step)
 {
-    return step / 2;
+    return step * STEP_HALF_STEP_RATIO;
 }
 
 static inline uint32_t HS2S(uint32_t step)
 {
-    return step * 2;
+    return step / STEP_HALF_STEP_RATIO;
 }
 
 /** Returns the direction of a particular motor velocity. */
@@ -96,6 +101,7 @@ static void update_motor_pin(uint32_t pin, bool active)
 
 /** Applies a given motor state to the given motor's GPIO pins */
 static void update_motor_pins(mctl_side_t side, const motor_state_t state)
+
 {
     for (uint8_t i = 0; i < NB_PHASES; ++i)
         update_motor_pin(_motor_pins[side][i], state[i]);
@@ -109,6 +115,7 @@ static mctl_side_t side_from_timer(PWMDriver *timer)
         if (_motor_timers[i] == timer)
             return i;
 
+    chSysHalt("Unknown timer");
     __builtin_unreachable();
 }
 
@@ -130,14 +137,14 @@ static void halt_motor_all(void)
 /** Enables PWM-based current reduction for the given motor. */
 static inline void motor_powersave_enable(mctl_side_t side)
 {
-    pwmEnableChannel((PWMDriver *)&_motor_timers[side], 0,
+    pwmEnableChannel((PWMDriver *)_motor_timers[side], POWERSAVE_CHANNEL,
                      (pwmcnt_t)(MOTOR_TIMER_FREQ / SPEED_THRESHOLD));
 }
 
 /** Disables PWM-based current reduction for the given motor. */
 static inline void motor_powersave_disable(mctl_side_t side)
 {
-    pwmDisableChannel((PWMDriver *)&_motor_timers[side], 0);
+    pwmDisableChannel((PWMDriver *)_motor_timers[side], POWERSAVE_CHANNEL);
 }
 
 /* == Callbacks == */
@@ -156,11 +163,11 @@ static void motor_tick_cb(PWMDriver *timer)
 
     int8_t dir_int = unit_xor(motor->direction == MC_FORWARD);
     int8_t side_int = unit_xor(side == MC_LEFT);
-    int8_t index_inc = dir_int * side_int;
+    int8_t index_inc = side_int * dir_int;
     uint8_t step_index = fast_modulo_8((int8_t)motor->step_index + index_inc);
 
     motor->step_index = step_index;
-    motor->half_step_count += side_int;
+    motor->half_step_count += dir_int;
 
     update_motor_pins(side, _step_lut[step_index]);
 }
@@ -181,7 +188,7 @@ static void motor_powersave_cb(PWMDriver *timer)
 static void init_motor(mctl_side_t side)
 {
     _motors[side] = (motor_t){
-        .speed = 0,
+        .speed = ZERO_SPEED,
         .direction = MC_HALT,
         .half_step_count = 0,
         .step_index = 0,
@@ -198,12 +205,12 @@ static void init_motor_all(void)
 /** Initialise the PWM timer for the given motor. */
 static void init_motor_pwm(mctl_side_t side)
 {
-    PWMDriver *timer = (PWMDriver *)&_motor_timers[side];
+    PWMDriver *timer = (PWMDriver *)_motor_timers[side];
     PWMConfig *timer_config = &_motor_pwm_configs[side];
 
     *timer_config =  (PWMConfig){
         .frequency = MOTOR_TIMER_FREQ,
-        .period = 0xFFFF,
+        .period = MAX_PERIOD,
         .cr2 = 0,
         .callback = motor_tick_cb,
         .channels = {
@@ -242,13 +249,13 @@ void mctl_set_counter(mctl_side_t side, uint32_t steps)
     motor->half_step_count = S2HS(steps);
 }
 
-void mctl_set_inverse_speed(int16_t velocity)
+void mctl_set_inverse_velocity(int16_t velocity)
 {
     mctl_set_motor_velocity(MC_RIGHT, velocity);
     mctl_set_motor_velocity(MC_LEFT, -velocity);
 }
 
-void mctl_set_common_speed(int16_t velocity)
+void mctl_set_common_velocity(int16_t velocity)
 {
     mctl_set_motor_velocity(MC_RIGHT, velocity);
     mctl_set_motor_velocity(MC_LEFT, velocity);
@@ -275,7 +282,7 @@ void mctl_set_motor_velocity(mctl_side_t side, int16_t velocity)
     else
         motor_powersave_disable(side);
 
-    pwmChangePeriod((PWMDriver *)_motor_timers[side], MOTOR_TIMER_FREQ / step_speed);
+    pwmChangePeriod((PWMDriver *)_motor_timers[side], MOTOR_TIMER_FREQ / half_step_speed);
 }
 
 void mctl_init(void)
