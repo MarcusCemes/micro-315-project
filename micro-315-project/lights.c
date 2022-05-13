@@ -121,7 +121,7 @@ static bool play_animation(lights_animation_t animation)
 }
 
 static THD_WORKING_AREA(lights_stack, 128);
-static THD_FUNCTION(lights_thread, arg)  // @suppress("No return")
+static THD_FUNCTION(lights_thread, arg)
 {
     (void)arg;
 
@@ -158,6 +158,12 @@ void lights_start(void)
 
 void trigger_lights(lights_animation_t animation, lights_mode_t mode)
 {
+    lights_queue(animation, mode);
+    chBSemSignal(&_cancellation_bsem);
+}
+
+void lights_queue(lights_animation_t animation, lights_mode_t mode)
+{
     switch (mode)
     {
         case LIGHTS_ONCE:
@@ -170,6 +176,4 @@ void trigger_lights(lights_animation_t animation, lights_mode_t mode)
             _animation = animation;
             break;
     }
-
-    chBSemSignal(&_cancellation_bsem);
 }
