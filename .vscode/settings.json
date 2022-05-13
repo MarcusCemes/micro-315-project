@@ -2,5 +2,7 @@
   "makefile.makeDirectory": "micro-315-project",
   "files.associations": {
     "*.h": "c"
-  }
+  },
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true
 }
