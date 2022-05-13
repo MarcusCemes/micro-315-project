@@ -32,7 +32,7 @@ static inline uint32_t min(size_t a, size_t b)
 /** Returns the largest of two integers. */
 static inline uint32_t max(size_t a, size_t b)
 {
-    return a <= b ? a : b;
+    return a >= b ? a : b;
 }
 
 /** Returns the interget, restricted to a certain domain. */
