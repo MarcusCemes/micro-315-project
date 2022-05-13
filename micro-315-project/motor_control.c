@@ -3,17 +3,25 @@
 #include <motors.h>
 
 #define TIMER_CLOCK 84000000
-#define TIMER_FREQ 100000          // [Hz]
-#define MOTOR_SPEED_LIMIT 13       // [cm/s]
-#define NSTEP_ONE_EL_TURN 4        // number of steps to do 1 electrical turn
-#define NB_OF_PHASES 4             // number of phases of the motors
-#define ROTATION_SPEED 200         // [step/s]
-#define TRANSLATION_SPEED 200      // [step/s]
-#define ROTATION_RADIUS 0.0265     // [m]
-#define WHEEL_RADIUS 0.02          // [m]
-#define NSTEP_ONE_TURN 1000        // number of step for 1 turn of the motor
-#define WHEEL_PERIMETER 13         // [cm]
-#define TIME_ONE_TURN_AT_200 7.15  // [sec]
+#define TIMER_FREQ 100000           // [Hz]
+#define MOTOR_SPEED_LIMIT 13        // [cm/s]
+#define NSTEP_ONE_EL_TURN 4         // number of steps to do 1 electrical turn
+#define NB_OF_PHASES 4              // number of phases of the motors
+#define SLOW_ROTATION_SPEED 200     // [step/s]
+#define FAST_ROTATION_SPEED 800     // [step/s]
+#define TRANSLATION_SPEED 800       // [step/s]
+#define ROTATION_RADIUS 0.0265      // [m]
+#define WHEEL_RADIUS 0.0205           // [m]
+#define NSTEP_ONE_TURN 1000         // number of step for 1 turn of the motor
+#define WHEEL_PERIMETER 13          // [cm]
+#define TIME_ONE_TURN_AT_200 6.46   // [sec]
+#define TIME_ONE_TURN_AT_800 1.615 // [sec]
+#define TIME_TENTH_A_METER_AT_800 0.97 // [sec]
+#define TENTH_A_METER 0.1 // [m]
+#define OFFSET_AT_200 0.30			// [sec]
+#define OFFSET_AT_800 0.265			// [sec]
+#define OFFSET_TRANSLATION_AT_800 0.275 // [sec]
+#define DISTANCE_BETWEEN_WHEELS 0.053 // [m]
 
 #define MOTOR_RIGHT_A GPIOE, 13
 #define MOTOR_RIGHT_B GPIOE, 12
@@ -64,7 +72,7 @@ static void motor_ctl_individual_speed(int32_t speed_left, int32_t speed_right)
 /** Applies the same speed to both the left and right motors. */
 static void motor_ctl_common_speed(int32_t speed)
 {
-    ctrl_different_speed(speed, speed);
+   motor_ctl_individual_speed(speed, speed);
 }
 
 /**
@@ -73,7 +81,7 @@ static void motor_ctl_common_speed(int32_t speed)
  */
 static void motor_ctl_inverse_speed(int32_t speed)
 {
-    ctrl_different_speed(speed, -speed);
+    motor_ctl_individual_speed(speed, -speed);
 }
 
 /** Stops both motors. */
@@ -108,41 +116,40 @@ bool motor_position_reached(void)
     return (state_motor == POSITION_CONTROL && position_right_reached && position_left_reached);
 }
 
-void motor_ctl_rotate(float angle)
+void motor_ctl_rotate_slow(float angle)
 {
     // time = NSTEP_ONE_TURN*angle*ROTATION_RADIUS/(4*M_PI*ROTATION_SPEED*WHEEL_RADIUS);
-    uint8_t time = angle * (TIME_ONE_TURN_AT_200 / M_TWOPI);
-    motor_ctl_inverse_speed(-ROTATION_SPEED);
-    chThdSleep(S2ST(time));
+    float time = angle * (TIME_ONE_TURN_AT_200 / M_TWOPI);
+    motor_ctl_inverse_speed(-SLOW_ROTATION_SPEED);
+    chThdSleepMilliseconds(1000*(time+OFFSET_AT_200));
     motor_ctl_stop();
 }
 
-void motor_rotation_bis(int32_t angle)
-{  // we use the trigonometric orientation for the angle and 0<angle<2PI
-    // motor_set_position(angle*ROTATION_RADIUS, angle*ROTATION_RADIUS, ROTATION_SPEED,
-    // -ROTATION_SPEED);
-    motor_set_position(20, 20, 5, -5);  //! magic numbers
-
-    while (!motor_position_reached())
-        chThdSleepMilliseconds(CHECK_INTERVAL_MS);
-}
-
-void motor_ctl_translate(float distance)
+void motor_ctl_rotate_fast(float angle)
 {
-    uint32_t time = distance / (TRANSLATION_SPEED * WHEEL_RADIUS);
-    ctrl_common_speed(TRANSLATION_SPEED);
-    chThdSleep(S2ST(time));
+    // time = NSTEP_ONE_TURN*angle*ROTATION_RADIUS/(4*M_PI*ROTATION_SPEED*WHEEL_RADIUS);
+    float time = angle * (TIME_ONE_TURN_AT_800 / M_TWOPI);
+    motor_ctl_inverse_speed(-FAST_ROTATION_SPEED);
+    chThdSleepMilliseconds(1000*(time+OFFSET_AT_800));
     motor_ctl_stop();
 }
 
-void motor_translation_forward_bis(int32_t distance)
+void motor_ctl_translate_forward(float distance)
 {
-    motor_set_position(distance, distance, TRANSLATION_SPEED, TRANSLATION_SPEED);
+    // float time = NSTEP_ONE_TURN * distance / (TRANSLATION_SPEED * M_TWOPI * WHEEL_RADIUS);
+	float time = TIME_TENTH_A_METER_AT_800 * distance / TENTH_A_METER ;
+    motor_ctl_common_speed(TRANSLATION_SPEED);
+    chThdSleepMilliseconds(1000*(time+OFFSET_TRANSLATION_AT_800));
+    motor_ctl_stop();
 }
 
-void motor_translation_backward_bis(int32_t distance)
+void motor_ctl_translate_backward(float distance)
 {
-    motor_set_position(distance, distance, -TRANSLATION_SPEED, -TRANSLATION_SPEED);
+    // float time = NSTEP_ONE_TURN * distance / (TRANSLATION_SPEED * M_TWOPI * WHEEL_RADIUS);
+	float time = TIME_TENTH_A_METER_AT_800 * distance / TENTH_A_METER ;
+    motor_ctl_common_speed(-TRANSLATION_SPEED);
+    chThdSleepMilliseconds(1000*(time+OFFSET_TRANSLATION_AT_800));
+    motor_ctl_stop();
 }
 
 /**************************END PUBLIC FUNCTIONS***********************************/

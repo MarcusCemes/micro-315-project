@@ -12,6 +12,7 @@
 #include <sensors/proximity.h>
 #include <spi_comm.h>
 #include <usbcfg.h>
+#include <math.h>
 
 #include "audio.h"
 #include "comms.h"
@@ -19,6 +20,7 @@
 #include "localisation.h"
 #include "sensors.h"
 #include "speaker.h"
+#include "motor_control.h"
 
 messagebus_t bus;
 MUTEX_DECL(bus_lock);  // @suppress("Field cannot be resolved")
@@ -33,6 +35,7 @@ int main(void)
     init();
     trigger_lights(LIGHTS_WAITING, LIGHTS_LOOP);
     comms_send_msg("EVENT", "READY");
+    motor_ctl_translate_forward(0.2);
     chThdSleep(TIME_INFINITE);
 }
 

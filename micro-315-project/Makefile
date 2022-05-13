@@ -11,7 +11,8 @@ CSRC += main.c          \
         sensors.c       \
         speaker.c       \
         utils.c         \
-        vendor/mpack.c
+        vendor/mpack.c	\
+        motor_control.c
 
 # Additional headers
 INCDIR +=
