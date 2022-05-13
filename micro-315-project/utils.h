@@ -1,6 +1,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <arm_math.h>
 #include <ch.h>
 #include <math.h>
 #include <stdlib.h>
@@ -59,5 +60,21 @@ void rw_read_lock(rw_lock_t* lock);
 void rw_read_unlock(rw_lock_t* lock);
 void rw_write_lock(rw_lock_t* lock);
 void rw_write_unlock(rw_lock_t* lock);
+
+/* == PID controller == */
+
+typedef arm_pid_instance_f32 pid_ctl_t;
+
+/** Initialise the PID instance, also reseting the state. */
+void pid_init(pid_ctl_t* pid, float Kp, float Ki, float Kd);
+
+/** Reset the PID instance. */
+void pid_reset(pid_ctl_t* pid);
+
+/** Update the PID instance with a new discrete input. */
+static inline float pid_update(pid_ctl_t* pid, float in)
+{
+    return arm_pid_f32(pid, in);
+}
 
 #endif

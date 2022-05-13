@@ -43,3 +43,32 @@ void rw_write_unlock(rw_lock_t* lock)
     chCondBroadcast(&lock->cond);
     chMtxUnlock(&lock->mtx);
 }
+
+/* == PID controller == */
+
+typedef enum
+{
+    KEEP_STATE,
+    RESET_STATE,
+} pid_state_reset_t;
+
+void pid_init(pid_ctl_t* pid, float Kp, float Ki, float Kd)
+{
+    pid->Kp = Kp;
+    pid->Ki = Ki;
+    pid->Kd = Kd;
+    arm_pid_init_f32(pid, RESET_STATE);
+}
+
+void pid_update_parameters(pid_ctl_t* pid, float Kp, float Ki, float Kd)
+{
+    pid->Kp = Kp;
+    pid->Ki = Ki;
+    pid->Kd = Kd;
+    arm_pid_init_f32(pid, KEEP_STATE);
+}
+
+void pid_reset(pid_ctl_t* pid)
+{
+    arm_pid_reset_f32(pid);
+}
