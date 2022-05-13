@@ -35,7 +35,6 @@ int main(void)
     init();
     trigger_lights(LIGHTS_WAITING, LIGHTS_LOOP);
     comms_send_msg("EVENT", "READY");
-    motor_ctl_translate_forward(0.2);
     chThdSleep(TIME_INFINITE);
 }
 

@@ -6,7 +6,7 @@
 
 #define TIMER_CLOCK 84000000
 #define TIMER_FREQ 100000                // [Hz]
-#define MOTOR_SPEED_LIMIT 13             // [cm/s]
+#define MOTOR_SPEED_LIMIT_CM 13          // [cm/s]
 #define NSTEP_ONE_EL_TURN 4              // number of steps to do 1 electrical turn
 #define NB_OF_PHASES 4                   // number of phases of the motors
 #define SLOW_ROTATION_SPEED 200          // [step/s]
@@ -51,8 +51,6 @@
 #define STOP_SPEED 0
 #define CHECK_INTERVAL_MS 100
 
-static int16_t right_speed = 0;              // in [step/s]
-static int16_t left_speed = 0;               // in [step/s]
 static int16_t counter_step_right = 0;       // in [step]
 static int16_t counter_step_left = 0;        // in [step]
 static int16_t position_to_reach_right = 0;  // in [step]
