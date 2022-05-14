@@ -245,12 +245,18 @@ static inline void motor_powersave_disableI(mctl_side_t side)
 static void update_timer_speed(mctl_side_t side, uint32_t step_speed)
 {
     motor_t *motor = get_motor(side);
+    timer_t *timer = get_timer(side);
+
     if (motor->step_speed == step_speed)
         return;
-
     motor->step_speed = step_speed;
+
     pwmcnt_t counter = step_speed == ZERO_SPEED ? MAX_PERIOD : MOTOR_TIMER_FREQ / S2HS(step_speed);
-    pwmChangePeriod(get_timer(side), counter);
+    pwmChangePeriod(timer, counter);
+
+    // Set the update bit to see immediate changes
+    // See https://forum.chibios.org/viewtopic.php?t=5763
+    timer->tim->EGR = 1;
 }
 
 /** I-class function that does a complete motor shutdown. */
@@ -284,7 +290,7 @@ static void motor_full_shutdownI(mctl_side_t side)
  * state and the motor's GPIO pins for the next step configuration.
  *
  * If the motor has been marked as halted, the motor will undergo a full
- * shutdown. Subsequent movement may have a significant (random) startup delay.
+ * shutdown.
  */
 static void motor_tick_cb(timer_t *timer)
 {
@@ -494,11 +500,12 @@ void mctl_wait_halted_all(void)
 {
     chSysLock();
     chMtxLockS(&_lock);
+    bool all_are_halted = all_halted();
+    chMtxUnlockS(&_lock);
 
-    if (!all_halted())
+    if (!all_are_halted)
         chThdEnqueueTimeoutS(&_motor_halt_queue, TIME_INFINITE);
 
-    chMtxUnlockS(&_lock);
     chSysUnlock();
 }
 
