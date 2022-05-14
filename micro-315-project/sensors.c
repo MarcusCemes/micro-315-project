@@ -38,7 +38,7 @@ static THD_FUNCTION(sensors_thread, arg)  // @suppress("No return")
         if (!in_proximity(&prox_values))
             continue;
 
-        trigger_lights(LIGHTS_ATTENTION, LIGHTS_ONCE);
+        lights_trigger(LIGHTS_ATTENTION, LIGHTS_ONCE);
 
         // Wait until the object leaves the periphery
         do

@@ -13,6 +13,8 @@ typedef enum
     LIGHTS_WAITING,
     LIGHTS_ATTENTION,
     LIGHTS_SPIN,
+    LIGHTS_EMERGENCY,
+    LIGHTS_STANDBY,
 } lights_animation_t;
 
 /** Initialize resources need by the lights thread. */
@@ -28,7 +30,7 @@ void lights_start(void);
  *
  * This play the animation immediately, interrupting the current animation.
  */
-void trigger_lights(lights_animation_t animation, lights_mode_t mode);
+void lights_trigger(lights_animation_t animation, lights_mode_t mode);
 
 /**
  * Set the next animation sequence, as well as the play mode.

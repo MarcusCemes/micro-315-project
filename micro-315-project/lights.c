@@ -26,6 +26,10 @@ static lights_animation_t _once_animation = LIGHTS_STOP;
  */
 static binary_semaphore_t _cancellation_bsem;
 
+/* === Private functions === */
+
+/* == Utility == */
+
 /**
  * Attempts to sleep for a given period of time.
  * @returns true if the wait was successful, false if cancelled.
@@ -41,6 +45,18 @@ static bool try_wait(uint32_t time_ms)
     if (!try_wait(MS))                                                                             \
         return false;
 
+/** Utility macro for looping over non-RGB LEDS. */
+#define FOR_EACH_LED(i) for (uint8_t i = 0; i < NUM_LEDS; ++i)
+
+/** Utility macro for looping over RGB LEDS. */
+#define FOR_EACH_RGB(i) for (uint8_t i = 0; i < NUM_RGB_LED; ++i)
+
+#define SET_RGB_LEDS(r, g, b)                                                                      \
+    for (uint8_t i = 0; i < NUM_RGB_LED; ++i)                                                      \
+        set_rgb_led(i, r, g, b);
+
+/* == Animations == */
+
 /** Blinks all LEDs red once. */
 static bool blink_red(uint32_t delay_ms)
 {
@@ -51,11 +67,7 @@ static bool blink_red(uint32_t delay_ms)
     }
     TRY_WAIT(delay_ms);
 
-    for (uint8_t i = 0; i < NUM_LED; ++i)
-    {
-        set_led(i, OFF);
-        set_rgb_led(i, OFF, OFF, OFF);
-    }
+    clear_leds();
     TRY_WAIT(delay_ms);
 
     return true;
@@ -100,6 +112,23 @@ static bool animation_spin(void)
     return true;
 }
 
+/** Simulates emergency-vehicle lighting. */
+static bool animation_emergency(void)
+{
+    SET_RGB_LEDS((i >= 2) ? MAX_INTENSITY : OFF, OFF, OFF);
+    TRY_WAIT(400);
+    SET_RGB_LEDS(OFF, OFF, (i <= 1) ? MAX_INTENSITY : OFF);
+    TRY_WAIT(400);
+    return true;
+}
+
+static bool animation_standby(void)
+{
+    SET_RGB_LEDS(MAX_INTENSITY, 0.15 * MAX_INTENSITY, OFF);
+    TRY_WAIT(TIME_INFINITE);
+    return true;
+}
+
 static bool play_animation(lights_animation_t animation)
 {
     switch (animation)
@@ -112,6 +141,12 @@ static bool play_animation(lights_animation_t animation)
 
         case LIGHTS_ATTENTION:
             return animation_attention();
+
+        case LIGHTS_EMERGENCY:
+            return animation_emergency();
+
+        case LIGHTS_STANDBY:
+            return animation_standby();
 
         case LIGHTS_SPIN:
             return animation_spin();
@@ -156,7 +191,7 @@ void lights_start(void)
     chThdCreateStatic(lights_stack, sizeof(lights_stack), HIGHPRIO, lights_thread, NULL);
 }
 
-void trigger_lights(lights_animation_t animation, lights_mode_t mode)
+void lights_trigger(lights_animation_t animation, lights_mode_t mode)
 {
     lights_queue(animation, mode);
     chBSemSignal(&_cancellation_bsem);
