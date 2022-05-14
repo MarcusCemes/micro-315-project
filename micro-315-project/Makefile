@@ -9,6 +9,7 @@ CSRC += main.c          \
         lights.c        \
         localisation.c  \
         motor_control.c \
+        movement.c      \
         sensors.c       \
         speaker.c       \
         utils.c         \
@@ -16,6 +17,9 @@ CSRC += main.c          \
 
 # Additional headers
 INCDIR +=
+
+# Avoid accidental double precision floating point math
+USE_COPT += -Wdouble-promotion -fsingle-precision-constant
 
 # Disable optimisation for debugging, requires a project clean
 # USE_COPT += -O0
@@ -25,7 +29,7 @@ INCDIR +=
 # for specific files/functions:
 #
 #   #pragma GCC push_options
-#   #pragma GCC optimize ("O0")
+#   #pragma GCC optimize("O0")
 #   ...
 #   #pragma GCC pop_options
 

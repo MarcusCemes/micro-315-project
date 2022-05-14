@@ -24,9 +24,27 @@ typedef struct
 /* == Inline functions == */
 
 /** Returns the smallest of two integers. */
-static inline size_t min(size_t a, size_t b)
+static inline int32_t min(int32_t a, int32_t b)
 {
     return a <= b ? a : b;
+}
+
+/** Returns the largest of two integers. */
+static inline int32_t max(int32_t a, int32_t b)
+{
+    return a >= b ? a : b;
+}
+
+/** Returns the interget, restricted to a certain domain. */
+static inline int32_t clamp(int32_t x, int32_t low, int32_t high)
+{
+    return max(min(x, high), low);
+}
+
+/** The sign of an integer, returning -1, 0 or 1. */
+static inline int8_t sign(int32_t number)
+{
+    return number > 0 ? 1 : number < 0 ? -1 : 0;
 }
 
 /** The sign of a float, returning -1, 0 or 1. */
@@ -35,7 +53,7 @@ static inline int8_t signf(float number)
     return number > 0 ? 1 : number < 0 ? -1 : 0;
 }
 
-/** COnvert radians to degrees. */
+/** Convert radians to degrees. */
 static inline float rad2deg(float radians)
 {
     return radians * PI_AS_DEG / M_PI;
