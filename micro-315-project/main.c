@@ -18,6 +18,7 @@
 #include "lights.h"
 #include "localisation.h"
 #include "motor_control.h"
+#include "movement.h"
 #include "sensors.h"
 #include "speaker.h"
 
@@ -26,14 +27,14 @@ MUTEX_DECL(bus_lock);  // @suppress("Field cannot be resolved")
 CONDVAR_DECL(bus_condvar);
 
 static void init(void);
+static void run(void);
 
 /* == Entry point == */
 
 int main(void)
 {
     init();
-    trigger_lights(LIGHTS_WAITING, LIGHTS_LOOP);
-    comms_send_msg("EVENT", "READY");
+    run();
     chThdSleep(TIME_INFINITE);
 }
 
@@ -76,6 +77,11 @@ static void init(void)
     lights_start();   // Lights thread
     mctl_start();     // Motor timers
     speaker_start();  // Speaker thread
+}
+
+static void run(void)
+{
+    trigger_lights(LIGHTS_SPIN, LIGHTS_LOOP);
 }
 
 /* == Stack guard == */

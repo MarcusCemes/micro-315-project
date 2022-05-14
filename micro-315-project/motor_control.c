@@ -302,7 +302,10 @@ static void motor_tick_cb(timer_t *timer)
     motor_t *motor = get_motor(side);
 
     if (motor_at_target(motor))
+    {
         motor->direction = MC_HALT;
+        motor->half_step_target_enabled = false;
+    }
 
     switch (motor->direction)
     {
@@ -465,19 +468,13 @@ void mctl_set_motor_velocity(mctl_side_t side, int16_t velocity)
     chMtxLock(&_lock);
     motor->direction = V2D(velocity);
 
-    switch (step_speed)
-    {
-        case ZERO_SPEED:
-            // Queue motor shutdown on next tick
-            motor->direction = MC_HALT;
-            break;
+    // Motor shutdown is queued on next tick
+    if (step_speed == ZERO_SPEED)
+        return;
 
-        default:
-            motor_set_powersave_enabled(side, S2HS(step_speed) < SPEED_THRESHOLD);
-            update_timer_speed(side, step_speed);
-            motor_set_interrupt_enabled(side, true);
-            break;
-    }
+    motor_set_powersave_enabled(side, S2HS(step_speed) < SPEED_THRESHOLD);
+    update_timer_speed(side, step_speed);
+    motor_set_interrupt_enabled(side, true);
 
     chMtxUnlock(&_lock);
 }
