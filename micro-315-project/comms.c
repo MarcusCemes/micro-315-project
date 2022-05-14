@@ -5,9 +5,13 @@
 #include <hal.h>
 #include <memstreams.h>
 #include <stdarg.h>
+#include <usbcfg.h>
 
 #include "utils.h"
 #include "vendor/mpack.h"
+
+#define BT_INTERFACE &SD3
+#define USB_INTERFACE &SDU1
 
 #define COMMS_BUFFER_SIZE 256
 #define FORMAT_BUFFER_SIZE 1024
@@ -47,7 +51,7 @@ union payload_size_t
  */
 static bool try_send(uint8_t byte)
 {
-    msg_t msg = chSequentialStreamPut((BaseSequentialStream *)&SD3, byte);
+    msg_t msg = chSequentialStreamPut((BaseSequentialStream *)BT_INTERFACE, byte);
     return msg == STM_OK;
 }
 

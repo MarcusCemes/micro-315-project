@@ -22,11 +22,19 @@ void lights_init(void);
 void lights_start(void);
 
 /**
- * Interrupt the lights thread and start playing the given animation.
+ * Set the next animation sequence, as well as the play mode.
+ * If the mode is set to `LIGHTS_ONCE`, the animation will be placed once
+ * before the original animation wil resume playing.
  *
- * If the mode is set to `LIGHTS_ONCE`, the thread will return to playing
- * the original animation after the animation is completed.
+ * This play the animation immediately, interrupting the current animation.
  */
 void trigger_lights(lights_animation_t animation, lights_mode_t mode);
+
+/**
+ * Set the next animation sequence, as well as the play mode.
+ * If the mode is set to `LIGHTS_ONCE`, the animation will be placed once
+ * before the original animation wil resume playing.
+ */
+void lights_queue(lights_animation_t animation, lights_mode_t mode);
 
 #endif
