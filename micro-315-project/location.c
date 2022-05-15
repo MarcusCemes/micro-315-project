@@ -5,7 +5,6 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "audio.h"
 #include "comms.h"
 #include "utils.h"
 
@@ -20,20 +19,19 @@ static float positive_mod(float a, float n)
     return a - floorf(a / n) * n;
 }
 
-/** Calculates the phase difference between the L/R audio streams */
-static float calculate_phase_delta(audio_data_t* data)
+/* == Public functions == */
+
+float calculate_phase_delta(float a, float b)
 {
-    float phase_right = data->value[A_RIGHT].phase;
-    float phase_left = data->value[A_LEFT].phase;
-    float phase_delta = phase_left - phase_right;
+    float phase_delta = b - a;
     return positive_mod(phase_delta + M_PI, M_TWOPI) - M_PI;
 }
 
-/* == Public functions == */
-
 float loc_estimate_angle(audio_data_t* data)
 {
-    float phase_delta = calculate_phase_delta(data);
+    float phase_right = data->value[A_RIGHT].phase;
+    float phase_left = data->value[A_LEFT].phase;
+    float phase_delta = calculate_phase_delta(phase_right, phase_left);
     float delta = (V_SOUND / M_TWOPI) * (phase_delta / data->frequency);
     float sin_theta = delta / D_MIC_LR;
     return asinf(sin_theta);

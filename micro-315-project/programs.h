@@ -3,4 +3,6 @@
 
 void program_point_sound(void);
 
+void program_locate_sound(void);
+
 #endif

@@ -62,16 +62,28 @@ static audio_file_t get_wav_filename(speaker_wav_t wav)
 {
     switch (wav)
     {
-        case SPKR_WAV_BEEP:
-            return audio_new("/startup.wav", VOL_LOW);
         case SPKR_WAVE_BEEP_01:
             return audio_new("/beep_01.wav", VOL_MED);
+        case SPKR_WAV_FUTURISTIC_SIREN_01:
+            return audio_new("/futuristic_siren_01.wav", VOL_HIGH);
+        case SPKR_WAV_PING_01:
+            return audio_new("/ping_01.wav", VOL_MED);
+        case SPKR_WAV_STARTUP:
+            return audio_new("/startup.wav", VOL_LOW);
+        case SPKR_WAV_TAUNT:
+            return audio_new("/taunt.wav", VOL_MED);
+
         default:
             return audio_new(NULL, VOL_LOW);
     }
 }
 
 /* == Public functions == */
+
+void speaker_play_melody(song_selection_t choice, play_melody_option_t option)
+{
+    playMelody(choice, option, NULL);
+}
 
 void speaker_play_tune(speaker_tune_t tune)
 {
@@ -92,6 +104,12 @@ void speaker_play_wav(speaker_wav_t wav, playSoundFileOption_t mode, bool wait_f
 
     if (wait_finished)
         waitSoundFileHasFinished();
+}
+
+void speaker_stop_wav(void)
+{
+    stopCurrentSoundFile();
+    waitSoundFileHasFinished();
 }
 
 void speaker_start(void)

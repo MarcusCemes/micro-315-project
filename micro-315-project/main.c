@@ -88,6 +88,10 @@ static THD_FUNCTION(run_thread, arg)
             program_point_sound();
             break;
 
+        case 1:
+            program_locate_sound();
+            break;
+
         default:
             lights_queue(LIGHTS_STOP, LIGHTS_LOOP);
             lights_trigger(LIGHTS_ATTENTION, LIGHTS_ONCE);
