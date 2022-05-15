@@ -15,6 +15,7 @@ typedef enum
     LIGHTS_SPIN,
     LIGHTS_EMERGENCY,
     LIGHTS_STANDBY,
+    LIGHTS_SUCCESS,
 } lights_animation_t;
 
 /** Initialize resources need by the lights thread. */

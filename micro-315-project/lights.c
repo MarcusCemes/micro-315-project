@@ -129,6 +129,13 @@ static bool animation_standby(void)
     return true;
 }
 
+static bool animation_success(void)
+{
+    SET_RGB_LEDS(OFF, MAX_INTENSITY, OFF);
+    TRY_WAIT(TIME_INFINITE);
+    return true;
+}
+
 static bool play_animation(lights_animation_t animation)
 {
     switch (animation)
@@ -142,20 +149,23 @@ static bool play_animation(lights_animation_t animation)
         case LIGHTS_ATTENTION:
             return animation_attention();
 
+        case LIGHTS_SPIN:
+            return animation_spin();
+
         case LIGHTS_EMERGENCY:
             return animation_emergency();
 
         case LIGHTS_STANDBY:
             return animation_standby();
 
-        case LIGHTS_SPIN:
-            return animation_spin();
+        case LIGHTS_SUCCESS:
+            return animation_success();
     }
 
     return true;
 }
 
-static THD_WORKING_AREA(lights_stack, 128);
+static THD_WORKING_AREA(lights_stack, 256);
 static THD_FUNCTION(lights_thread, arg)
 {
     (void)arg;

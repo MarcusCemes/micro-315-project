@@ -50,7 +50,7 @@ static THD_FUNCTION(sensors_thread, arg)  // @suppress("No return")
     }
 }
 
-void init_sensors(void)
+void sensors_init(void)
 {
     (void)chThdCreateStatic(sensors_stack, sizeof(sensors_stack), HIGHPRIO, sensors_thread, NULL);
 

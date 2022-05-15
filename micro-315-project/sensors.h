@@ -10,6 +10,6 @@ extern messagebus_t bus;
 extern parameter_namespace_t parameter_root;
 
 /** Initialise the sensors thread to detect objects. */
-void init_sensors(void);
+void sensors_init(void);
 
 #endif

@@ -195,7 +195,7 @@ bool comms_send_msg_f(char *type, const char *fmt, ...)
     return result;
 }
 
-void init_comms(void)
+void comms_init(void)
 {
     chMtxObjectInit(&_comms_lock);
     initialised = true;

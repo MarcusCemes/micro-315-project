@@ -39,6 +39,6 @@ bool comms_send_msg(char *type, char *data);
 bool comms_send_msg_f(char *type, const char *fmt, ...);
 
 /** Initialises the communications mutex. */
-void init_comms(void);
+void comms_init(void);
 
 #endif

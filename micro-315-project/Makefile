@@ -7,9 +7,10 @@ CSRC += main.c          \
         audio.c         \
         comms.c         \
         lights.c        \
-        localisation.c  \
+        location.c      \
         motor_control.c \
         movement.c      \
+        programs.c      \
         sensors.c       \
         speaker.c       \
         utils.c         \
