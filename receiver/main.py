@@ -110,6 +110,17 @@ def process_pcm(data: bytes) -> None:
     updates.append((3, "FFT (back)", mags[2]))
 
 
+def process_pcm_back(data: bytes) -> None:
+    pcm = np.frombuffer(data, dtype=np.float32)
+    fft = np.fft.fft(pcm)
+    mag = np.abs(fft)
+    pha = np.angle(fft)
+
+    updates.append((0, "PCM (back)", pcm))
+    updates.append((1, "FFT magnitude (back)", mag))
+    updates.append((2, "FFT phase (back)", pha))
+
+
 def process_phases(data: bytes):
     try:
         phases = np.frombuffer(data, dtype=np.float32)
@@ -173,6 +184,8 @@ def process_data(encoded_data: str):
 
         if type == "PCM":
             process_pcm(data)
+        elif type == "PCM_BACK":
+            process_pcm_back(data)
         else:
             console.log(f"{type}: {limit_data(data)}")
 

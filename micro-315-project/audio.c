@@ -6,7 +6,12 @@
 #include <ch.h>
 #include <hal.h>
 
+#include "comms.h"
 #include "utils.h"
+
+// Comment out to disable PCM broadcasting via comms
+#define BROADCAST_PCM
+#define BROADCAST_PCM_PRESCALER 32
 
 /** The amount of samples received expected by the callback function. */
 #define CALLBACK_CHANNEL_SAMPLES 160
@@ -182,6 +187,18 @@ static void analyse_audio_channel(audio_channel_t channel, bool write_peak)
     value->phase = cargf(_fft_buffer[_audio_data.index]);
 }
 
+static void broadcast_pcm(void)
+{
+#ifdef BROADCAST_PCM
+    static size_t prescaler = 0;
+    if (++prescaler == BROADCAST_PCM_PRESCALER)
+    {
+        prescaler = 0;
+        comms_send_buffer("PCM_BACK", (uint8_t*)_pcm_buffer[A_BACK], sizeof(_pcm_buffer[A_BACK]));
+    }
+#endif
+}
+
 /**
  * Efficient audio processing that performs a FFT and magnitude analysis
  * on the PCM data.
@@ -196,6 +213,8 @@ static void analyse_audio_channel(audio_channel_t channel, bool write_peak)
 static void process_audio(void)
 {
     chDbgCheck(_processing_active == true);
+
+    broadcast_pcm();
     rw_write_lock(&_audio_data_lock);
 
     analyse_audio_channel(A_BACK, true);

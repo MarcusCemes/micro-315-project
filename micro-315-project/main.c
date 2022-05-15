@@ -79,7 +79,7 @@ static THD_FUNCTION(run_thread, arg)
     chRegSetThreadName(__FUNCTION__);
 
     comms_send_msg("STATUS", "init");
-    speaker_play_wav(SPKR_WAV_BEEP, SF_FORCE_CHANGE, true);
+    speaker_play_wav(SPKR_WAV_STARTUP, SF_FORCE_CHANGE, true);
     chThdSleepMilliseconds(500);
 
     switch (get_selector())
