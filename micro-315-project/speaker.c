@@ -100,7 +100,7 @@ void speaker_play_wav(speaker_wav_t wav, playSoundFileOption_t mode, bool wait_f
         return;
 
     setSoundFileVolume(file.volume);
-    playSoundFile(file.filename, mode, SAMPLE_RATE);
+    playSoundFile(file.filename, mode);
 
     if (wait_finished)
         waitSoundFileHasFinished();

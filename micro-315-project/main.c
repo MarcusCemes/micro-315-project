@@ -8,7 +8,6 @@
 #include <motors.h>
 #include <selector.h>
 #include <sensors/proximity.h>
-#include <serial_comm.h>
 #include <spi_comm.h>
 #include <usbcfg.h>
 
@@ -37,6 +36,12 @@ int main(void)
 }
 
 /* == Initialisation == */
+
+static void serial_start(void)
+{
+    static SerialConfig ser_cfg = { 115200, 0, 0, 0 };
+    sdStart(&SD3, &ser_cfg);
+}
 
 static void init(void)
 {
